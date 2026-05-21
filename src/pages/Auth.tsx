@@ -47,13 +47,19 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: clean.email, password: clean.password,
           options: { emailRedirectTo: `${window.location.origin}/dashboard`, data: { full_name: clean.full_name || clean.email.split("@")[0] } },
         });
         if (error) throw error;
-        toast.success(t("auth.createdToast"));
-        navigate("/dashboard");
+        if (data.session) {
+          // Email auto-confirmado — sesión activa
+          toast.success(t("auth.createdToast"));
+          navigate("/dashboard");
+        } else {
+          // Confirmación de email requerida
+          toast.success(t("auth.checkEmail") || "¡Cuenta creada! Revisa tu email para confirmar tu cuenta.");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: clean.email, password: clean.password });
         if (error) throw error;
