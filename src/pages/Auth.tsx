@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,10 +120,11 @@ const Auth = () => {
             onClick={async () => {
               setLoading(true);
               try {
-                const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/dashboard` });
-                if (result.error) throw new Error(result.error.message ?? t("auth.errorGoogle"));
-                if (result.redirected) return;
-                navigate("/dashboard");
+                const { error } = await supabase.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo: `${window.location.origin}/dashboard` },
+                });
+                if (error) throw new Error(error.message ?? t("auth.errorGoogle"));
               } catch (err: any) {
                 toast.error(err.message ?? t("auth.errorGoogle"));
                 setLoading(false);
