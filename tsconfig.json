@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/server.ts",
+    "src/start.ts",
+    "src/router.tsx",
+    "src/routeTree.gen.ts",
+    "src/routes",
+    "src/integrations/lovable",
+    "src/integrations/supabase/client.server.ts",
+    "src/integrations/supabase/auth-attacher.ts",
+    "src/integrations/supabase/auth-middleware.ts",
+    "src/lib/error-capture.ts",
+    "src/lib/error-page.ts"
+  ]
+}

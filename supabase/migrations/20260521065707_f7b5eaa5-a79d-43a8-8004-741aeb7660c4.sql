@@ -1,0 +1,10 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE public.emotional_scores;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.usage_metrics;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.recommendations;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.children;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.gamification;
+ALTER TABLE public.emotional_scores REPLICA IDENTITY FULL;
+ALTER TABLE public.usage_metrics REPLICA IDENTITY FULL;
+ALTER TABLE public.recommendations REPLICA IDENTITY FULL;
+ALTER TABLE public.children REPLICA IDENTITY FULL;
+ALTER TABLE public.gamification REPLICA IDENTITY FULL;
