@@ -17,6 +17,7 @@ interface Props {
 
 const PROJECT_URL = import.meta.env.VITE_SUPABASE_URL;
 const INGEST_URL = `${PROJECT_URL}/functions/v1/ingest-usage`;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 export const QuickConnect = ({ child, onChange }: Props) => {
   const { t } = useTranslation();
@@ -61,7 +62,11 @@ export const QuickConnect = ({ child, onChange }: Props) => {
     try {
       const res = await fetch(INGEST_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ANON_KEY}`,
+          "apikey": ANON_KEY,
+        },
         body: JSON.stringify({ token, events: [{ app_name: "TestApp", duration_seconds: 60, event_type: "app_usage" }] }),
       });
       const data = await res.json();

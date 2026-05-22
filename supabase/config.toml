@@ -1,1 +1,7 @@
 project_id = "lqvgspmjfkfdurdnejzs"
+
+[functions.ingest-usage]
+verify_jwt = false
+
+[functions.daily-analysis]
+verify_jwt = false
