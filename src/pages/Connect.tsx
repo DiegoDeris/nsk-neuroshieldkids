@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Loader2, Send, AlertCircle, Smartphone } from "lucide-react";
 
 const INGEST_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ingest-usage`;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 type Status = "idle" | "sending" | "ok" | "error";
 
@@ -25,7 +26,11 @@ export default function Connect() {
     try {
       const res = await fetch(INGEST_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ANON_KEY}`,
+          "apikey": ANON_KEY,
+        },
         body: JSON.stringify({
           token,
           events: [
