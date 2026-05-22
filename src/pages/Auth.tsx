@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,13 +47,19 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: clean.email, password: clean.password,
           options: { emailRedirectTo: `${window.location.origin}/dashboard`, data: { full_name: clean.full_name || clean.email.split("@")[0] } },
         });
         if (error) throw error;
-        toast.success(t("auth.createdToast"));
-        navigate("/dashboard");
+        if (data.session) {
+          // Email auto-confirmado — sesión activa
+          toast.success(t("auth.createdToast"));
+          navigate("/dashboard");
+        } else {
+          // Confirmación de email requerida
+          toast.success(t("auth.checkEmail") || "¡Cuenta creada! Revisa tu email para confirmar tu cuenta.");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: clean.email, password: clean.password });
         if (error) throw error;
@@ -121,10 +126,11 @@ const Auth = () => {
             onClick={async () => {
               setLoading(true);
               try {
-                const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/dashboard` });
-                if (result.error) throw new Error(result.error.message ?? t("auth.errorGoogle"));
-                if (result.redirected) return;
-                navigate("/dashboard");
+                const { error } = await supabase.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo: `${window.location.origin}/dashboard` },
+                });
+                if (error) throw new Error(error.message ?? t("auth.errorGoogle"));
               } catch (err: any) {
                 toast.error(err.message ?? t("auth.errorGoogle"));
                 setLoading(false);

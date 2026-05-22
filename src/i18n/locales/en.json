@@ -86,6 +86,7 @@
     "ctaSignupFree": "Create free account",
     "backHome": "← Back to home",
     "createdToast": "Account created. Check your email to confirm.",
+    "checkEmail": "Account created! Check your email to confirm your account.",
     "welcomeBack": "Welcome back 👋",
     "errorAuth": "Authentication error",
     "errorGoogle": "Could not sign in with Google",
@@ -123,7 +124,9 @@
     "deletedToast": "Deleted",
     "confirmDelete": "Delete this child and all their data?",
     "nameRequired": "Name required",
-    "empty": "You haven't added any kids yet."
+    "empty": "You haven't added any kids yet.",
+    "editChild": "Edit child",
+    "savedToast": "Changes saved"
   },
   "child": {
     "report": "Report",
