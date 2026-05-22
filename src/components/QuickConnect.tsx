@@ -26,7 +26,20 @@ export const QuickConnect = ({ child, onChange }: Props) => {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const initialSync = useRef<string | null>(child.last_ingest_at);
-  const token = child.ingest_token ?? "";
+  const [token, setToken] = useState(child.ingest_token ?? "");
+
+  // Auto-generate token if missing (child created before migration or token was null)
+  useEffect(() => {
+    if (token) return;
+    const newToken = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map(b => b.toString(16).padStart(2, "0")).join("");
+    supabase.from("children").update({ ingest_token: newToken }).eq("id", child.id).then(({ error }) => {
+      if (error) { toast.error("No se pudo generar el token QR"); return; }
+      setToken(newToken);
+      onChange();
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const isLive = child.last_ingest_at && Date.now() - new Date(child.last_ingest_at).getTime() < 5 * 60 * 1000;
 
   useEffect(() => {
@@ -64,6 +77,7 @@ export const QuickConnect = ({ child, onChange }: Props) => {
       .map(b => b.toString(16).padStart(2, "0")).join("");
     const { error } = await supabase.from("children").update({ ingest_token: newToken }).eq("id", child.id);
     if (error) return toast.error(error.message);
+    setToken(newToken);
     toast.success(t("quick.rotated"));
     onChange();
   };

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { z } from "zod";
@@ -21,6 +21,8 @@ const Children = () => {
   const [list, setList] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", age: 10, avatar_emoji: "🧒" });
+  const [editChild, setEditChild] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ name: "", age: 10, avatar_emoji: "🧒" });
 
   const schema = z.object({
     name: z.string().trim().min(1, t("children.nameRequired")).max(40),
@@ -45,6 +47,24 @@ const Children = () => {
     toast.success(t("children.createdToast", { name: form.name }));
     setOpen(false);
     setForm({ name: "", age: 10, avatar_emoji: "🧒" });
+    load();
+  };
+
+  const openEdit = (c: any) => {
+    setEditChild(c);
+    setEditForm({ name: c.name, age: c.age, avatar_emoji: c.avatar_emoji });
+  };
+
+  const saveEdit = async () => {
+    if (!editChild) return;
+    const parsed = schema.safeParse(editForm);
+    if (!parsed.success) return toast.error(parsed.error.issues[0].message);
+    const { error } = await supabase.from("children").update({
+      name: parsed.data.name, age: parsed.data.age, avatar_emoji: parsed.data.avatar_emoji,
+    }).eq("id", editChild.id);
+    if (error) return toast.error(error.message);
+    toast.success(t("children.savedToast") ?? "Guardado");
+    setEditChild(null);
     load();
   };
 
@@ -93,6 +113,34 @@ const Children = () => {
           </Dialog>
         </div>
 
+        {/* Edit dialog */}
+        <Dialog open={!!editChild} onOpenChange={v => { if (!v) setEditChild(null); }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{t("children.editChild") ?? "Editar"}</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("children.name")}</Label>
+                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder={t("children.namePlaceholder")} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("children.age")}</Label>
+                <Input type="number" min={3} max={18} value={editForm.age}
+                  onChange={e => setEditForm({ ...editForm, age: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("children.avatar")}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {EMOJIS.map(e => (
+                    <button key={e} type="button" onClick={() => setEditForm({ ...editForm, avatar_emoji: e })}
+                      className={`text-2xl p-2 rounded-lg border transition-smooth ${editForm.avatar_emoji === e ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>{e}</button>
+                  ))}
+                </div>
+              </div>
+              <Button className="w-full" onClick={saveEdit}>{t("common.save") ?? "Guardar"}</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="grid md:grid-cols-2 gap-4">
           {list.map(c => (
             <Card key={c.id} className="p-5 flex items-center justify-between hover:shadow-soft transition-smooth">
@@ -103,9 +151,14 @@ const Children = () => {
                   <div className="text-sm text-muted-foreground">{t("dashboard.yearsOld", { age: c.age })}</div>
                 </div>
               </Link>
-              <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="ghost" onClick={() => openEdit(c)}>
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
             </Card>
           ))}
           {list.length === 0 && (
