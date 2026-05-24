@@ -1,7 +1,7 @@
 // Endpoint público de ingesta event-driven. Auth = ingest_token del hijo (no JWT).
 // POST /ingest-usage  body: { token, events:[{app_name,duration_seconds,occurred_at?,event_type?,metadata?}] }
 // Tras insertar: agrega métricas del día en background y EVALÚA REGLAS en tiempo casi real → genera alertas.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

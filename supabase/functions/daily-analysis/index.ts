@@ -1,6 +1,6 @@
 // Cron diario 08:00 — agrega eventos del día anterior y dispara IA + alertas para todos los hijos con datos.
 // v2: pasa historial de 14 días a la IA, usa heurística mejorada con momentum, evita alertas duplicadas.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
