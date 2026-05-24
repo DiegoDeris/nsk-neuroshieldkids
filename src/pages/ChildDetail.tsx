@@ -404,7 +404,7 @@ const ChildDetail = () => {
               <div className="space-y-3">
                 <div>
                   <h3 className="font-semibold text-destructive">Recomendamos buscar apoyo profesional</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{deep.referral_reason}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{fixMojibake(deep.referral_reason)}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <a href="tel:900202010"><Button size="sm" variant="destructive"><Phone className="h-4 w-4 mr-2" /> ANAR 900 20 20 10</Button></a>
@@ -608,7 +608,7 @@ const ChildDetail = () => {
               {recs.map(r => (
                 <li key={r.id} className="flex items-start gap-2 p-3 rounded-lg bg-muted/40">
                   <Sparkles className="h-4 w-4 text-primary mt-1 shrink-0" />
-                  <span className="text-sm">{r.title}</span>
+                  <span className="text-sm">{fixMojibake(r.title)}</span>
                 </li>
               ))}
             </ul>

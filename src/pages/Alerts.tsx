@@ -10,6 +10,15 @@ import { BellOff, Heart, Phone, MessageCircle, ExternalLink, AlertTriangle, Ligh
 
 type Sev = "preventive" | "moderate" | "critical";
 
+function fixMojibake(s: string | null | undefined): string {
+  if (!s) return s ?? "";
+  if ([...s].some(c => c.charCodeAt(0) > 255)) return s;
+  try {
+    const bytes = new Uint8Array([...s].map(c => c.charCodeAt(0)));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch { return s; }
+}
+
 const Alerts = () => {
   const { t, i18n } = useTranslation();
   const [list, setList] = useState<any[]>([]);
@@ -132,8 +141,8 @@ const Alerts = () => {
                     <span className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString(locale)}</span>
                     {a.children?.name && <span className="text-xs text-muted-foreground">· {a.children.name}</span>}
                   </div>
-                  <div className="font-semibold">{a.title}</div>
-                  <p className="text-sm text-muted-foreground mt-1">{a.message}</p>
+                  <div className="font-semibold">{fixMojibake(a.title)}</div>
+                  <p className="text-sm text-muted-foreground mt-1">{fixMojibake(a.message)}</p>
 
                   <Button variant="ghost" size="sm" className="mt-2 -ml-2 h-7"
                     onClick={() => setOpenId(open ? null : a.id)}>
