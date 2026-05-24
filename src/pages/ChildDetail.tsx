@@ -78,18 +78,19 @@ const ChildDetail = () => {
   // Auto-análisis en vivo: cuando llegan métricas nuevas que no tienen análisis de hoy
   useEffect(() => {
     if (analyzing || !metrics[0]) return;
-    const metricId = String(metrics[0].id ?? "");
-    if (metricId === lastAutoAnalyzeRef.current) return;
+    // Clave: id + total_minutes para detectar tanto filas nuevas como actualizaciones por UPSERT
+    const metricKey = `${metrics[0].id}_${metrics[0].total_minutes ?? 0}`;
+    if (metricKey === lastAutoAnalyzeRef.current) return;
     const todayStr = new Date().toISOString().slice(0, 10);
     const lastScoreDate = scores[0]?.created_at?.slice(0, 10);
     const lastScoreAge = scores[0] ? Date.now() - new Date(scores[0].created_at).getTime() : Infinity;
     const COOLDOWN = 15 * 60 * 1000;
     if (lastScoreDate === todayStr && lastScoreAge < COOLDOWN) return;
-    lastAutoAnalyzeRef.current = metricId;
+    lastAutoAnalyzeRef.current = metricKey;
     const t = setTimeout(() => analyze(), 1500);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metrics[0]?.id]);
+  }, [metrics[0]?.id, metrics[0]?.total_minutes]);
 
   // Realtime: refresca al instante cuando llegan datos del dispositivo / IA
   useEffect(() => {

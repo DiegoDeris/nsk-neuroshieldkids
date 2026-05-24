@@ -11,6 +11,15 @@ import { Plus, Brain, AlertTriangle, TrendingUp, Sparkles, Activity, Wifi, WifiO
 import { riskColor } from "@/lib/scoring";
 
 type Child = { id: string; name: string; age: number; avatar_emoji: string | null; last_ingest_at?: string | null };
+
+function fixMojibake(s: string | null | undefined): string {
+  if (!s) return s ?? "";
+  if ([...s].some(c => c.charCodeAt(0) > 255)) return s;
+  try {
+    const bytes = new Uint8Array([...s].map(c => c.charCodeAt(0)));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch { return s; }
+}
 type Score = { score: number; risk_level: "low"|"medium"|"high"; created_at: string; explanation?: string | null };
 
 const RISK_STYLE = {
@@ -224,7 +233,7 @@ const Dashboard = () => {
                             </span>
                           </div>
                           {s.explanation && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{s.explanation}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{fixMojibake(s.explanation)}</p>
                           )}
                         </div>
                       )}
