@@ -16,7 +16,7 @@ export default function Connect() {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
 
-  const send = async (appName = "ConnectionTest", seconds = 30) => {
+  const send = async (appName = "ConnectionTest", seconds = 300) => {
     if (!token) {
       setStatus("error");
       setMessage("Token no válido. Pide a tu adulto que regenere el QR.");

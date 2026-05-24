@@ -1,6 +1,6 @@
 // Predicción IA multi-horizonte (3, 7 y 30 días) con escenarios "con/sin intervención",
 // indicadores tempranos y plan de prevención accionable. Crea quests automáticas.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

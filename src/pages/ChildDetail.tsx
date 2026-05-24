@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { computeEmotionalScore, computeScoreWithHistory, riskLabel, hoursAgo } from "@/lib/scoring";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, CartesianGrid } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { Brain, FileDown, Sparkles, ArrowLeft, Trophy, AlertTriangle, TrendingUp, Phone, MessageSquare, Target, Clock, Moon, Activity, Smartphone, CheckCircle2, ChevronDown } from "lucide-react";
 import { QuickConnect } from "@/components/QuickConnect";
 
@@ -22,6 +22,21 @@ const DIM_LABELS: Record<string, string> = {
   dependency: "Dependencia",
   attention_fragmentation: "Atención",
 };
+
+const PIE_COLORS = ["#6366f1","#8b5cf6","#06b6d4","#10b981","#f59e0b","#ef4444","#ec4899","#14b8a6","#f97316","#a855f7"];
+
+/** Corrige mojibake UTF-8→Latin-1: texto almacenado como bytes UTF-8 interpretados como Latin-1. */
+function fixMojibake(s: string | null | undefined): string {
+  if (!s) return s ?? "";
+  // Si hay chars > 255 ya es Unicode correcto
+  if ([...s].some(c => c.charCodeAt(0) > 255)) return s;
+  try {
+    const bytes = new Uint8Array([...s].map(c => c.charCodeAt(0)));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return s;
+  }
+}
 
 const ChildDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +54,7 @@ const ChildDetail = () => {
   const [showQR, setShowQR] = useState(false);
 
   const loadingRef = useRef(false);
+  const lastAutoAnalyzeRef = useRef<string | null>(null);
   const loadAll = useCallback(async () => {
     if (!id) return;
     if (loadingRef.current) return;
@@ -58,6 +74,22 @@ const ChildDetail = () => {
   }, [id]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  // Auto-análisis en vivo: cuando llegan métricas nuevas que no tienen análisis de hoy
+  useEffect(() => {
+    if (analyzing || !metrics[0]) return;
+    const metricId = String(metrics[0].id ?? "");
+    if (metricId === lastAutoAnalyzeRef.current) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const lastScoreDate = scores[0]?.created_at?.slice(0, 10);
+    const lastScoreAge = scores[0] ? Date.now() - new Date(scores[0].created_at).getTime() : Infinity;
+    const COOLDOWN = 15 * 60 * 1000;
+    if (lastScoreDate === todayStr && lastScoreAge < COOLDOWN) return;
+    lastAutoAnalyzeRef.current = metricId;
+    const t = setTimeout(() => analyze(), 1500);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metrics[0]?.id]);
 
   // Realtime: refresca al instante cuando llegan datos del dispositivo / IA
   useEffect(() => {
@@ -403,7 +435,7 @@ const ChildDetail = () => {
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-3">{lastScore.explanation}</p>
+                <p className="text-sm text-muted-foreground mt-3">{fixMojibake(lastScore.explanation)}</p>
               </>
             ) : (
               <div className="mt-4 space-y-2">
@@ -439,8 +471,8 @@ const ChildDetail = () => {
                 <ul className="space-y-2">
                   {deep.evidence.map((e: any, i: number) => (
                     <li key={i} className="text-sm p-3 rounded-lg bg-muted/40">
-                      <div>{e.claim}</div>
-                      <div className="text-xs text-muted-foreground mt-1">📊 {e.data_point}</div>
+                      <div>{fixMojibake(e.claim)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">📊 {fixMojibake(e.data_point)}</div>
                     </li>
                   ))}
                 </ul>
@@ -453,7 +485,7 @@ const ChildDetail = () => {
                   <h4 className="text-sm font-semibold mb-2">Para HOY</h4>
                   <ul className="space-y-2">
                     {deep.immediate_actions.map((a: string, i: number) => (
-                      <li key={i} className="text-sm flex gap-2"><Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />{a}</li>
+                      <li key={i} className="text-sm flex gap-2"><Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />{fixMojibake(a)}</li>
                     ))}
                   </ul>
                 </div>
@@ -463,7 +495,7 @@ const ChildDetail = () => {
                   <h4 className="text-sm font-semibold mb-2">Para 2-4 semanas</h4>
                   <ul className="space-y-2">
                     {deep.long_term_actions.map((a: string, i: number) => (
-                      <li key={i} className="text-sm flex gap-2"><Target className="h-4 w-4 text-secondary shrink-0 mt-0.5" />{a}</li>
+                      <li key={i} className="text-sm flex gap-2"><Target className="h-4 w-4 text-secondary shrink-0 mt-0.5" />{fixMojibake(a)}</li>
                     ))}
                   </ul>
                 </div>
@@ -474,7 +506,7 @@ const ChildDetail = () => {
               <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
                 <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Cómo hablarlo con tu hijo/a</h4>
                 <ul className="space-y-1 text-sm italic">
-                  {deep.conversation_script.map((c: string, i: number) => <li key={i}>"{c}"</li>)}
+                  {deep.conversation_script.map((c: string, i: number) => <li key={i}>"{fixMojibake(c)}"</li>)}
                 </ul>
               </div>
             )}
@@ -740,46 +772,71 @@ const PremiumTrendCard = memo(function PremiumTrendCard({ data }: { data: { date
 });
 
 const PremiumRadarCard = memo(function PremiumRadarCard({ data }: { data: { app: string; minutos: number }[] }) {
-  const top = [...data].sort((a, b) => b.minutos - a.minutos)[0];
+  const sorted = [...data].sort((a, b) => b.minutos - a.minutos);
+  const top = sorted[0];
+  const total = sorted.reduce((a, d) => a + d.minutos, 0);
+  const pieData = sorted.map(d => ({ name: d.app, value: d.minutos }));
+
+  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    if (percent < 0.07) return null;
+    const RADIAN = Math.PI / 180;
+    const r = innerRadius + (outerRadius - innerRadius) * 0.55;
+    const x = cx + r * Math.cos(-midAngle * RADIAN);
+    const y = cy + r * Math.sin(-midAngle * RADIAN);
+    return <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>{`${Math.round(percent * 100)}%`}</text>;
+  };
+
   return (
     <Card className="p-6 rounded-3xl shadow-soft relative overflow-hidden bg-gradient-to-br from-background via-background to-secondary/5">
       <div className="flex items-start justify-between mb-3 gap-3">
         <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Radar de apps · último día</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Apps · último día</div>
           <h3 className="text-lg font-bold mt-1 flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary" />
             {top ? <>Domina <span className="text-gradient">{top.app}</span></> : "Uso por app"}
           </h3>
         </div>
-        {top && <Badge variant="secondary" className="rounded-full">{top.minutos} min</Badge>}
+        {total > 0 && <Badge variant="secondary" className="rounded-full">{total} min totales</Badge>}
       </div>
-      {data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={280}>
-          <RadarChart data={data} outerRadius="78%">
-            <defs>
-              <radialGradient id="radarFill" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.55} />
-                <stop offset="100%" stopColor="hsl(var(--secondary))" stopOpacity={0.15} />
-              </radialGradient>
-            </defs>
-            <PolarGrid stroke="hsl(var(--border))" strokeDasharray="3 4" />
-            <PolarAngleAxis dataKey="app" stroke="hsl(var(--foreground))" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} />
-            <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tick={false} axisLine={false} />
-            <Tooltip
-              contentStyle={{ background: "hsl(var(--background) / 0.95)", border: "1px solid hsl(var(--border))", borderRadius: 12, boxShadow: "0 8px 24px hsl(var(--primary) / 0.08)" }}
-              formatter={(v: any) => [`${v} min`, "Uso"]}
-            />
-            <Radar
-              dataKey="minutos"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2.5}
-              fill="url(#radarFill)"
-              isAnimationActive
-              animationDuration={900}
-              animationEasing="ease-out"
-            />
-          </RadarChart>
-        </ResponsiveContainer>
+      {pieData.length > 0 ? (
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+          <ResponsiveContainer width={230} height={230}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%" cy="50%"
+                innerRadius={58} outerRadius={105}
+                paddingAngle={2}
+                dataKey="value"
+                labelLine={false}
+                label={renderLabel}
+                isAnimationActive
+                animationDuration={900}
+                animationEasing="ease-out"
+              >
+                {pieData.map((_, i) => (
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 12 }}
+                formatter={(v: any) => [`${v} min`, "Uso"]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="flex flex-col gap-2 min-w-0 flex-1 w-full">
+            {pieData.map((d, i) => (
+              <div key={d.name} className="flex items-center gap-2 text-sm min-w-0">
+                <span className="h-3 w-3 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                <span className="truncate flex-1 text-muted-foreground">{d.name}</span>
+                <span className="font-bold shrink-0 tabular-nums">{d.value}m</span>
+                {total > 0 && (
+                  <span className="text-xs text-muted-foreground shrink-0 w-8 text-right">{Math.round(d.value / total * 100)}%</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <WaitingSkeleton height="h-[240px]" />
       )}
