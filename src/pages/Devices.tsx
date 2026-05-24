@@ -11,6 +11,15 @@ import { Link } from "react-router-dom";
 import { QuickConnect } from "@/components/QuickConnect";
 import { toast } from "sonner";
 
+function fixMojibake(s: string | null | undefined): string {
+  if (!s) return s ?? "";
+  if ([...s].some(c => c.charCodeAt(0) > 255)) return s;
+  try {
+    const bytes = new Uint8Array([...s].map(c => c.charCodeAt(0)));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch { return s; }
+}
+
 const PROJECT_URL = import.meta.env.VITE_SUPABASE_URL;
 const INGEST_URL = `${PROJECT_URL}/functions/v1/ingest-usage`;
 
@@ -216,12 +225,12 @@ const Devices = () => {
                             <TrendIcon className="h-4 w-4" /> {t(`devices.trend.${lastPred.trend}`)}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{lastPred.explanation}</p>
+                        <p className="text-sm text-muted-foreground">{fixMojibake(lastPred.explanation)}</p>
                         {lastPred.drivers?.length > 0 && (
                           <div>
                             <div className="text-xs font-medium mb-1">{t("devices.drivers")}</div>
                             <ul className="text-sm space-y-1">
-                              {lastPred.drivers.map((d: string, i: number) => <li key={i}>• {d}</li>)}
+                              {lastPred.drivers.map((d: string, i: number) => <li key={i}>• {fixMojibake(d)}</li>)}
                             </ul>
                           </div>
                         )}

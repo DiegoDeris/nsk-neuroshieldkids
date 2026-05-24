@@ -36,12 +36,28 @@ Reglas estrictas:
 - "refer_to_professional" SOLO si: nocturno>90 min, total>360 min sostenido 3+ días, aislamiento abrupto, alteración severa del sueño, o las notas mencionan autolesión/suicidio/malestar severo.
 - Guion de conversación: 3 frases cortas y literales que el padre/madre puede usar, sin juzgar, con curiosidad.`;
 
+    // Señales conductuales agregadas por el RPC (columna behavioral_signals en usage_metrics)
+    const behavioralMeta = metric.behavioral_signals ?? {};
+
     const userPrompt = `Niño/a: ${child.name}, ${child.age} años.
 Métricas hoy: total ${metric.total_minutes}min, nocturno ${metric.night_minutes}min, sesiones ${metric.sessions}, app dominante ${metric.dominant_app ?? "n/d"}.
-Reparto: ${JSON.stringify(metric.app_breakdown ?? {})}
+Reparto de uso: ${JSON.stringify(metric.app_breakdown ?? {})}
+
+SEÑALES CONDUCTUALES CAPTURADAS (desde navegador web del dispositivo monitorizado):
+- interactions_per_min: taps/clics por minuto (>20 = uso compulsivo/ansioso)
+- visibility_changes: cambios app primer plano/fondo (>5 en período = fragmentación/ansiedad)
+- orientation_changes: cambios de orientación (proxy de agitación)
+- is_night / hour_of_day: uso nocturno
+- battery_drain_percent: drenaje de batería (proxy de intensidad)
+- network_type: wifi vs cellular
+- session_minutes: duración de la sesión continua
+Datos: ${JSON.stringify(behavioralMeta)}
+
 Notas del padre/madre: ${metric.notes ?? "ninguna"}
 Heurística inicial: score ${heuristic.score} (${heuristic.risk_level}). Factores: ${heuristic.factors?.map((f:any)=>f.label).join("; ")||"ninguno"}.
-Histórico últimos 14 días: ${JSON.stringify((history ?? []).slice(0,14))}`;
+Histórico últimos 14 días: ${JSON.stringify((history ?? []).slice(0,14))}
+
+IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuando total_minutes es bajo (el dispositivo solo reporta tiempo con el navegador abierto, no todas las apps). Usa interactions_per_min y visibility_changes para inferir dependencia, ansiedad y fragmentación de atención aunque el tiempo total sea pequeño.`;
 
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
