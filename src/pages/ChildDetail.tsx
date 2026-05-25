@@ -336,14 +336,28 @@ const ChildDetail = () => {
 
         {/* Conexión: badge colapsado si ya está conectado, QR completo si no */}
         {isConnected && !showQR ? (
-          <Card className="p-4 rounded-2xl shadow-soft border-green-200 bg-green-50/60 dark:bg-green-950/20 flex items-center justify-between gap-3 flex-wrap">
+          <Card className={`p-4 rounded-2xl shadow-soft flex items-center justify-between gap-3 flex-wrap ${
+            isLive
+              ? "border-green-200 bg-green-50/60 dark:bg-green-950/20"
+              : "border-amber-200 bg-amber-50/60 dark:bg-amber-950/20"
+          }`}>
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-green-100 dark:bg-green-900/40 inline-flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className={`h-9 w-9 rounded-full inline-flex items-center justify-center ${
+                isLive ? "bg-green-100 dark:bg-green-900/40" : "bg-amber-100 dark:bg-amber-900/40"
+              }`}>
+                {isLive
+                  ? <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  : <AlertTriangle className="h-5 w-5 text-amber-500" />
+                }
               </div>
               <div>
-                <div className="font-semibold text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
-                  Conectado ✓ {isLive && <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />}
+                <div className={`font-semibold text-sm flex items-center gap-2 ${
+                  isLive ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"
+                }`}>
+                  {isLive
+                    ? <><span>En vivo</span><span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /></>
+                    : <span>Sin señal reciente</span>
+                  }
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Última señal: {child.last_ingest_at ? new Date(child.last_ingest_at).toLocaleString() : "—"}
