@@ -218,9 +218,8 @@ Deno.serve(async (req) => {
       days.map(d => admin.rpc("aggregate_events_to_metric", { _child_id: child.id, _day: d }))
     ).catch(err => console.error("aggregate error (background):", err));
 
-    // Actualizar last_ingest_at
-    admin.from("children").update({ last_ingest_at: new Date().toISOString() }).eq("id", child.id)
-      .then(() => {}).catch(() => {});
+    // Actualizar last_ingest_at (await — fire-and-forget no garantiza ejecución en edge workers)
+    await admin.from("children").update({ last_ingest_at: new Date().toISOString() }).eq("id", child.id);
 
     // EVENT-DRIVEN: evaluar reglas en tiempo casi real
     const alerts = await evaluateRules(admin, child.id, child.parent_id, rows);
