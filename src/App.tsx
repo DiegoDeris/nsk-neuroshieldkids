@@ -18,6 +18,7 @@ import Quests from "./pages/Quests";
 import Learn from "./pages/Learn";
 import Pricing from "./pages/Pricing";
 import Connect from "./pages/Connect";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/connect" element={<Connect />} />
+            <Route path="/install" element={<Install />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/children" element={<ProtectedRoute><Children /></ProtectedRoute>} />
             <Route path="/child/:id" element={<ProtectedRoute><ChildDetail /></ProtectedRoute>} />
