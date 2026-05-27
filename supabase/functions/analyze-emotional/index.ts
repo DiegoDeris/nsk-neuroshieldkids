@@ -3,8 +3,6 @@
 // score global, severidad, evidencia, plan inmediato + largo plazo,
 // guion de conversación y derivación profesional cuando proceda.
 
-import { createClient } from "npm:@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
