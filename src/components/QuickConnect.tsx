@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Send, Wifi, RefreshCw, QrCode, Zap, Settings2, Upload } from "lucide-react";
+import { Copy, Check, Send, Wifi, RefreshCw, QrCode, Zap, Settings2, Upload, Download, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ConnectWizard } from "./ConnectWizard";
@@ -101,7 +101,11 @@ export const QuickConnect = ({ child, onChange }: Props) => {
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
-  const qrPayload = `${window.location.origin}/connect?t=${encodeURIComponent(token)}&n=${encodeURIComponent(child.name)}`;
+  const [qrMode, setQrMode] = useState<"install" | "token">("install");
+  // install QR → opens /install page (first-time setup with APK download)
+  // token QR  → raw token (for already-installed app)
+  const installQrPayload = `${window.location.origin}/install?t=${encodeURIComponent(token)}&n=${encodeURIComponent(child.name)}`;
+  const qrPayload = qrMode === "install" ? installQrPayload : token;
 
   if (guided) {
     return (
@@ -132,10 +136,31 @@ export const QuickConnect = ({ child, onChange }: Props) => {
 
       <div className="grid md:grid-cols-[auto_1fr] gap-6 items-start">
         {/* QR */}
-        <div className="bg-white p-4 rounded-2xl shadow-soft mx-auto">
-          <QRCodeSVG value={qrPayload} size={180} />
-          <div className="text-center text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
-            <QrCode className="h-3 w-3" /> {t("quick.scanWithKid")}
+        <div className="flex flex-col items-center gap-2">
+          <div className="bg-white p-4 rounded-2xl shadow-soft mx-auto">
+            <QRCodeSVG value={qrPayload} size={180} />
+          </div>
+          <div className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1">
+            {qrMode === "install"
+              ? <><Download className="h-3 w-3" /> Escanear para instalar la app</>
+              : <><QrCode className="h-3 w-3" /> Escanear desde dentro de la app</>
+            }
+          </div>
+          <div className="flex gap-1">
+            <Button
+              size="sm" variant={qrMode === "install" ? "default" : "outline"}
+              className="h-7 text-xs px-3"
+              onClick={() => setQrMode("install")}
+            >
+              <Smartphone className="h-3 w-3 mr-1" /> Instalar
+            </Button>
+            <Button
+              size="sm" variant={qrMode === "token" ? "default" : "outline"}
+              className="h-7 text-xs px-3"
+              onClick={() => setQrMode("token")}
+            >
+              <QrCode className="h-3 w-3 mr-1" /> Configurar
+            </Button>
           </div>
         </div>
 

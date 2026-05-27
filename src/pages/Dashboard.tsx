@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Plus, Brain, AlertTriangle, TrendingUp, Sparkles, Activity, Wifi, WifiOff, ChevronRight } from "lucide-react";
+import { Plus, Brain, AlertTriangle, TrendingUp, Sparkles, Activity, WifiOff, ChevronRight, Smartphone } from "lucide-react";
 import { riskColor } from "@/lib/scoring";
+import { AddDeviceModal } from "@/components/AddDeviceModal";
 
 type Child = { id: string; name: string; age: number; avatar_emoji: string | null; last_ingest_at?: string | null };
 
@@ -45,6 +46,7 @@ const Dashboard = () => {
   const [latest, setLatest] = useState<Record<string, Score | null>>({});
   const [alertsCount, setAlertsCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [deviceModal, setDeviceModal] = useState<Child | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -199,57 +201,93 @@ const Dashboard = () => {
                 const isLive = !!c.last_ingest_at && Date.now() - new Date(c.last_ingest_at).getTime() < 5 * 60 * 1000;
                 const isConnected = !!c.last_ingest_at;
                 return (
-                  <Link key={c.id} to={`/child/${c.id}`}>
-                    <Card className={`p-5 hover:shadow-glow transition-smooth cursor-pointer h-full border ${style ? `${style.bg} ${style.border}` : ""}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="text-3xl">{c.avatar_emoji}</div>
-                          <div>
-                            <div className="font-semibold">{c.name}</div>
-                            <div className="text-xs text-muted-foreground">{t("dashboard.yearsOld", { age: c.age })}</div>
+                  <div key={c.id} className="relative group">
+                    <Link to={`/child/${c.id}`}>
+                      <Card className={`p-5 hover:shadow-glow transition-smooth cursor-pointer h-full border ${style ? `${style.bg} ${style.border}` : ""}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="text-3xl">{c.avatar_emoji}</div>
+                            <div>
+                              <div className="font-semibold">{c.name}</div>
+                              <div className="text-xs text-muted-foreground">{t("dashboard.yearsOld", { age: c.age })}</div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            {s ? (
+                              <div className={`text-3xl font-bold ${style ? style.label : ""}`}>{s.score}</div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground">{t("dashboard.noData")}</div>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <LiveDot active={isLive} />
+                              {!isConnected && <span className="text-[10px] text-muted-foreground">Sin conectar</span>}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {s ? (
-                            <div className={`text-3xl font-bold ${style ? style.label : ""}`}>{s.score}</div>
-                          ) : (
-                            <div className="text-xs text-muted-foreground">{t("dashboard.noData")}</div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            <LiveDot active={isLive} />
-                            {!isConnected && <span className="text-[10px] text-muted-foreground">Sin conectar</span>}
+                        {s && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`h-2 w-2 rounded-full ${style?.dot}`} />
+                              <span className={`text-xs font-semibold ${style?.label}`}>
+                                {s.risk_level === "low" ? "Tranquilo" : s.risk_level === "medium" ? "Atención" : "Alerta"}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground ml-auto">
+                                {new Date(s.created_at).toLocaleDateString("es", { day: "2-digit", month: "short" })}
+                              </span>
+                            </div>
+                            {s.explanation && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{fixMojibake(s.explanation)}</p>
+                            )}
                           </div>
-                        </div>
-                      </div>
-                      {s && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`h-2 w-2 rounded-full ${style?.dot}`} />
-                            <span className={`text-xs font-semibold ${style?.label}`}>
-                              {s.risk_level === "low" ? "Tranquilo" : s.risk_level === "medium" ? "Atención" : "Alerta"}
+                        )}
+                        {!s && isConnected && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <TrendingUp className="h-3 w-3" /> Ejecuta el análisis profundo
+                          </div>
+                        )}
+                        {/* Connect CTA for unconnected devices */}
+                        {!isConnected && (
+                          <div className="mt-3 pt-3 border-t border-dashed border-border/60">
+                            <span className="text-xs text-primary font-medium flex items-center gap-1">
+                              <Smartphone className="h-3 w-3" /> Toca para conectar dispositivo
                             </span>
-                            <span className="text-[10px] text-muted-foreground ml-auto">
-                              {new Date(s.created_at).toLocaleDateString("es", { day: "2-digit", month: "short" })}
-                            </span>
                           </div>
-                          {s.explanation && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{fixMojibake(s.explanation)}</p>
-                          )}
-                        </div>
-                      )}
-                      {!s && isConnected && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <TrendingUp className="h-3 w-3" /> Ejecuta el análisis profundo
-                        </div>
-                      )}
-                    </Card>
-                  </Link>
+                        )}
+                      </Card>
+                    </Link>
+                    {/* "Añadir dispositivo" button — overlaid, stops link propagation */}
+                    {!isConnected && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeviceModal(c); }}
+                        className="absolute inset-0 z-10 rounded-[inherit] focus:outline-none"
+                        aria-label={`Conectar dispositivo de ${c.name}`}
+                      />
+                    )}
+                  </div>
                 );
               })}
             </div>
           </>
         )}
       </div>
+
+      {/* AddDeviceModal */}
+      {deviceModal && (
+        <AddDeviceModal
+          childId={deviceModal.id}
+          childName={deviceModal.name}
+          childAvatar={deviceModal.avatar_emoji ?? "🧒"}
+          open={!!deviceModal}
+          onOpenChange={(v) => { if (!v) setDeviceModal(null); }}
+          onConnected={() => {
+            // Refresh children list to get updated last_ingest_at
+            if (user) {
+              supabase.from("children").select("*").eq("parent_id", user.id).order("created_at")
+                .then(({ data }) => setChildren(data ?? []));
+            }
+          }}
+        />
+      )}
     </AppLayout>
   );
 };
