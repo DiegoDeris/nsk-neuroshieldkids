@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { Brain, ShieldCheck, Sparkles, BarChart3, Bell, Trophy, FileText, Lock, Check } from "lucide-react";
+import { Brain, ShieldCheck, Sparkles, BarChart3, Bell, Trophy, Lock, Check, TrendingUp, Lightbulb, BookOpen, Smartphone, UserCheck, Activity } from "lucide-react";
 import hero from "@/assets/nsk-hero.jpg";
 
 const Landing = () => {
@@ -22,12 +22,14 @@ const Landing = () => {
   ];
 
   const features = [
-    { icon: Brain, title: t("features.ai.title"), text: t("features.ai.text") },
-    { icon: Bell, title: t("features.alerts.title"), text: t("features.alerts.text") },
-    { icon: BarChart3, title: t("features.trends.title"), text: t("features.trends.text") },
-    { icon: Trophy, title: t("features.game.title"), text: t("features.game.text") },
-    { icon: FileText, title: t("features.pdf.title"), text: t("features.pdf.text") },
-    { icon: Lock, title: t("features.privacy.title"), text: t("features.privacy.text") },
+    { icon: Brain,       title: t("features.ai.title"),         text: t("features.ai.text") },
+    { icon: Activity,    title: t("features.predictive.title"),  text: t("features.predictive.text") },
+    { icon: Bell,        title: t("features.alerts.title"),      text: t("features.alerts.text") },
+    { icon: BarChart3,   title: t("features.trends.title"),      text: t("features.trends.text") },
+    { icon: Lightbulb,   title: t("features.recs.title"),        text: t("features.recs.text") },
+    { icon: Trophy,      title: t("features.game.title"),        text: t("features.game.text") },
+    { icon: BookOpen,    title: t("features.learn.title"),       text: t("features.learn.text") },
+    { icon: Lock,        title: t("features.privacy.title"),     text: t("features.privacy.text") },
   ];
 
   return (
@@ -53,7 +55,7 @@ const Landing = () => {
           <p className="text-lg text-muted-foreground max-w-xl">{t("landing.subtitle")}</p>
           <div className="flex flex-wrap gap-3">
             <Link to="/auth?mode=signup"><Button size="lg" className="shadow-glow">{t("landing.ctaCreate")}</Button></Link>
-            <Link to="/pricing"><Button size="lg" variant="outline">{t("landing.ctaPlans")}</Button></Link>
+            <a href="#como-funciona"><Button size="lg" variant="outline">{t("landing.ctaPlans")}</Button></a>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
             <div className="flex items-center gap-1"><ShieldCheck className="h-4 w-4 text-success" /> {t("landing.noSpyware")}</div>
@@ -68,9 +70,38 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Cómo funciona */}
+      <section id="como-funciona" className="container py-16">
+        <h2 className="text-3xl lg:text-4xl font-bold text-center mb-12">{t("landing.howTitle")}</h2>
+        <div className="grid md:grid-cols-3 gap-8">
+          {[
+            { icon: UserCheck, num: "1", title: t("landing.howStep1Title"), text: t("landing.howStep1Text") },
+            { icon: Smartphone, num: "2", title: t("landing.howStep2Title"), text: t("landing.howStep2Text") },
+            { icon: TrendingUp, num: "3", title: t("landing.howStep3Title"), text: t("landing.howStep3Text") },
+          ].map(s => (
+            <div key={s.num} className="flex flex-col items-center text-center gap-4">
+              <div className="relative">
+                <div className="h-16 w-16 rounded-2xl gradient-primary flex items-center justify-center shadow-glow">
+                  <s.icon className="h-8 w-8 text-primary-foreground" />
+                </div>
+                <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-secondary text-secondary-foreground text-xs font-bold flex items-center justify-center">{s.num}</span>
+              </div>
+              <h3 className="text-lg font-semibold">{s.title}</h3>
+              <p className="text-sm text-muted-foreground">{s.text}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-10 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-sm text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 text-success shrink-0" />
+            {t("landing.privacyPillars")}
+          </div>
+        </div>
+      </section>
+
       <section className="container py-16">
         <h2 className="text-3xl lg:text-4xl font-bold text-center mb-12">{t("landing.featuresTitle")}</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {features.map(f => (
             <div key={f.title} className="gradient-card border border-border rounded-2xl p-6 shadow-soft hover:shadow-glow transition-smooth">
               <div className="h-12 w-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
