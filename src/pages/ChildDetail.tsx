@@ -126,13 +126,6 @@ const ChildDetail = () => {
     score: s.score
   })), [scores]);
 
-  const radarData = useMemo(() => {
-    const last = metrics[0];
-    if (!last) return [];
-    const breakdown = (last.app_breakdown ?? {}) as Record<string, number>;
-    return Object.entries(breakdown).slice(0, 6).map(([app, m]) => ({ app, minutos: m }));
-  }, [metrics]);
-
   const lastScore = scores[0];
   const ai = (lastScore?.patterns && typeof lastScore.patterns === "object" && !Array.isArray(lastScore.patterns)) ? lastScore.patterns as any : null;
 
@@ -394,15 +387,14 @@ const ChildDetail = () => {
             Uso de hoy
           </h2>
           {metrics[0] ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <ReadOnlyMetric icon={<Clock className="h-4 w-4" />} label="Tiempo total" value={`${metrics[0].total_minutes} min`} />
               <ReadOnlyMetric icon={<Moon className="h-4 w-4" />} label="Uso nocturno" value={`${metrics[0].night_minutes} min`} hint="22h - 7h" />
               <ReadOnlyMetric icon={<Activity className="h-4 w-4" />} label="Sesiones" value={`${metrics[0].sessions}`} />
-              <ReadOnlyMetric icon={<Smartphone className="h-4 w-4" />} label="App favorita" value={metrics[0].dominant_app ?? "—"} hint="Android" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[0,1,2,3].map(i => (
+            <div className="grid grid-cols-3 gap-3">
+              {[0,1,2].map(i => (
                 <Card key={i} className="p-4 rounded-2xl shadow-soft">
                   <Skeleton className="h-3 w-20 mb-3" />
                   <Skeleton className="h-7 w-16" />
