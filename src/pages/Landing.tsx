@@ -76,7 +76,7 @@ const Landing = () => {
         <div className="grid md:grid-cols-3 gap-8">
           {[
             { icon: UserCheck, num: "1", title: t("landing.howStep1Title"), text: t("landing.howStep1Text") },
-            { icon: Smartphone, num: "2", title: t("landing.howStep2Title"), text: t("landing.howStep2Text") },
+            { icon: Smartphone, num: "2", title: t("landing.howStep2Title"), text: t("landing.howStep2Text"), badges: true },
             { icon: TrendingUp, num: "3", title: t("landing.howStep3Title"), text: t("landing.howStep3Text") },
           ].map(s => (
             <div key={s.num} className="flex flex-col items-center text-center gap-4">
@@ -88,6 +88,12 @@ const Landing = () => {
               </div>
               <h3 className="text-lg font-semibold">{s.title}</h3>
               <p className="text-sm text-muted-foreground">{s.text}</p>
+              {s.badges && (
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-success/20 text-success border border-success/30">{t("landing.androidBadge")}</span>
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground border border-border">{t("landing.iosBadge")}</span>
+                </div>
+              )}
             </div>
           ))}
         </div>

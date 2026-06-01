@@ -379,11 +379,14 @@ const ChildDetail = () => {
           </div>
         )}
 
+        {/* Privacidad: recordatorio visible */}
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/60 border border-border text-xs text-muted-foreground w-fit">
+          <span>🔒</span>
+          <span>Sin mensajes · Sin espionaje · Sin contenido privado · Solo patrones de comportamiento</span>
+        </div>
+
         {/* Semáforo global de bienestar */}
         <SemaphoreCard risk={lastScore?.risk_level} score={lastScore?.score} />
-
-        {/* Radar de apps justo debajo del semáforo */}
-        <PremiumRadarCard data={radarData} />
 
         {/* Uso de hoy en tarjetas de solo lectura (dashboard, no formulario) */}
         <section>
@@ -395,7 +398,7 @@ const ChildDetail = () => {
               <ReadOnlyMetric icon={<Clock className="h-4 w-4" />} label="Tiempo total" value={`${metrics[0].total_minutes} min`} />
               <ReadOnlyMetric icon={<Moon className="h-4 w-4" />} label="Uso nocturno" value={`${metrics[0].night_minutes} min`} hint="22h - 7h" />
               <ReadOnlyMetric icon={<Activity className="h-4 w-4" />} label="Sesiones" value={`${metrics[0].sessions}`} />
-              <ReadOnlyMetric icon={<Smartphone className="h-4 w-4" />} label="App favorita" value={metrics[0].dominant_app ?? "—"} />
+              <ReadOnlyMetric icon={<Smartphone className="h-4 w-4" />} label="App favorita" value={metrics[0].dominant_app ?? "—"} hint="Android" />
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -805,7 +808,10 @@ const PremiumRadarCard = memo(function PremiumRadarCard({ data }: { data: { app:
     <Card className="p-6 rounded-3xl shadow-soft relative overflow-hidden bg-gradient-to-br from-background via-background to-secondary/5">
       <div className="flex items-start justify-between mb-3 gap-3">
         <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Apps · último día</div>
+          <div className="flex items-center gap-2">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Apps · último día</div>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">Android</span>
+          </div>
           <h3 className="text-lg font-bold mt-1 flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary" />
             {top ? <>Domina <span className="text-gradient">{top.app}</span></> : "Uso por app"}
