@@ -29,7 +29,7 @@ export default function Install() {
     {
       icon: <QrCode className="h-6 w-6 text-emerald-500" />,
       title: "Escanea el QR de configuración",
-      body: "Abre NeuroShield Kids, pulsa "Escanear QR" y apunta la cámara al código de abajo. Listo — la protección queda activa.",
+      body: "Abre NeuroShield Kids, pulsa «Escanear QR» y apunta la cámara al código de abajo. Listo — la protección queda activa.",
     },
   ], []);
 
