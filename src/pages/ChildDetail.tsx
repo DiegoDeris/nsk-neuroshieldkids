@@ -387,14 +387,13 @@ const ChildDetail = () => {
             Uso de hoy
           </h2>
           {metrics[0] ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <ReadOnlyMetric icon={<Clock className="h-4 w-4" />} label="Tiempo total" value={`${metrics[0].total_minutes} min`} />
-              <ReadOnlyMetric icon={<Moon className="h-4 w-4" />} label="Uso nocturno" value={`${metrics[0].night_minutes} min`} hint="22h - 7h" />
               <ReadOnlyMetric icon={<Activity className="h-4 w-4" />} label="Sesiones" value={`${metrics[0].sessions}`} />
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
-              {[0,1,2].map(i => (
+            <div className="grid grid-cols-2 gap-3">
+              {[0,1].map(i => (
                 <Card key={i} className="p-4 rounded-2xl shadow-soft">
                   <Skeleton className="h-3 w-20 mb-3" />
                   <Skeleton className="h-7 w-16" />
