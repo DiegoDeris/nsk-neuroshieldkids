@@ -61,7 +61,7 @@ IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuand
       method: "POST",
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.0-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -133,7 +133,9 @@ IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuand
     if (!response.ok) {
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      throw new Error(`Gateway ${response.status}`);
+      let detail = `Error IA (${response.status})`;
+      try { const j = JSON.parse(t); detail = j?.error?.message ?? j?.error ?? detail; } catch { /* noop */ }
+      throw new Error(detail);
     }
 
     const data = await response.json();
