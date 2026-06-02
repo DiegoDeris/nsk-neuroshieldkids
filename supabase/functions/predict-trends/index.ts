@@ -40,7 +40,7 @@ Predice horizontes 3, 7 y 30 días. Identifica 3 indicadores tempranos a vigilar
       method: "POST",
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.0-flash",
         messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
         tools: [{ type: "function", function: {
           name: "emit_prediction",
