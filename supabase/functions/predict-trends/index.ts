@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
     const { data: metrics } = await admin.from("usage_metrics").select("*").eq("child_id", child_id).order("metric_date", { ascending: false }).limit(30);
     const { data: scores } = await admin.from("emotional_scores").select("score,risk_level,patterns,created_at").eq("child_id", child_id).order("created_at", { ascending: false }).limit(30);
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY missing");
 
     const sys = `Eres analista senior de bienestar digital infantil. NO diagnosticas. Predices trayectorias usando los datos de uso digital y los scores históricos. Español, claro, accionable, basado en evidencia. Devuelve siempre intervalos de confianza (lo + bajo, esperado, lo + alto) y dos escenarios: con plan de prevención aplicado y sin intervención.`;
     const usr = `Niño/a: ${child.name}, ${child.age} años.
@@ -36,11 +36,11 @@ Métricas (más reciente primero, max 30): ${JSON.stringify((metrics ?? []).map(
 Scores recientes (max 30): ${JSON.stringify(scores ?? [])}
 Predice horizontes 3, 7 y 30 días. Identifica 3 indicadores tempranos a vigilar y 3 acciones de prevención inmediatas.`;
 
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemini-2.0-flash",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
         tools: [{ type: "function", function: {
           name: "emit_prediction",

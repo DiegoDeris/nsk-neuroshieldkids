@@ -13,8 +13,8 @@ Deno.serve(async (req) => {
 
   try {
     const { child, metric, heuristic, history } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not configured");
 
     const lang = (child?.lang ?? "es").toString().startsWith("en") ? "en" : "es";
 
@@ -57,11 +57,11 @@ Histórico últimos 14 días: ${JSON.stringify((history ?? []).slice(0,14))}
 
 IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuando total_minutes es bajo (el dispositivo solo reporta tiempo con el navegador abierto, no todas las apps). Usa interactions_per_min y visibility_changes para inferir dependencia, ansiedad y fragmentación de atención aunque el tiempo total sea pequeño.`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemini-2.0-flash",
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

@@ -135,10 +135,9 @@ const ChildDetail = () => {
   const [aiDeep, setAiDeep] = useState<any>(null);
 
   const analyze = async () => {
-    if (!metrics[0]) return toast.error("Añade primero las métricas del día");
     setAnalyzing(true);
     try {
-      const last = metrics[0];
+      const last = metrics[0] ?? { total_minutes: 0, night_minutes: 0, sessions: 0, dominant_app: null, app_breakdown: null, metric_date: new Date().toISOString().slice(0, 10) };
       const prev_avg = metrics.slice(1, 8).reduce((a, m) => a + m.total_minutes, 0) / Math.max(1, metrics.slice(1, 8).length);
       // v2: scoring con momentum temporal usando historial de métricas
       const historyPoints = metrics.slice(1, 15).map((m: any) => ({
@@ -221,9 +220,6 @@ const ChildDetail = () => {
     setPredicting(true);
     try {
       if (!navigator.onLine) throw new Error("Sin conexión. Reintenta cuando vuelvas a tener internet.");
-      if (!metrics[0] && scores.length === 0) {
-        throw new Error("Aún no hay datos suficientes. Conecta el dispositivo y vuelve a intentarlo.");
-      }
       const { data, error } = await supabase.functions.invoke("predict-trends", { body: { child_id: id } });
       if (error) {
         // Intenta leer mensaje legible del cuerpo del error
@@ -780,6 +776,8 @@ const PremiumTrendCard = memo(function PremiumTrendCard({ data }: { data: { date
   );
 });
 
+const _PremiumRadarCard_DELETED = null; // removed
+/*
 const PremiumRadarCard = memo(function PremiumRadarCard({ data }: { data: { app: string; minutos: number }[] }) {
   const sorted = [...data].sort((a, b) => b.minutos - a.minutos);
   const top = sorted[0];
@@ -855,3 +853,4 @@ const PremiumRadarCard = memo(function PremiumRadarCard({ data }: { data: { app:
     </Card>
   );
 });
+*/

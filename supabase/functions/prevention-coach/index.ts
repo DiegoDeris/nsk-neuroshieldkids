@@ -30,8 +30,8 @@ Deno.serve(async (req) => {
       admin.from("predictions").select("*").eq("child_id", child_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY missing");
 
     const sys = `Eres coach de bienestar digital infantil para padres. NO diagnosticas. Diseña un plan SEMANAL ultra-concreto, basado en hábitos pequeños y medibles. Idioma: español, cercano y sin jerga. Cada acción debe ser observable y medible (ej: "móvil fuera del cuarto a las 22:00, 5/7 noches").`;
     const usr = `Perfil: ${child.name}, ${child.age} años.
@@ -40,11 +40,11 @@ Deno.serve(async (req) => {
 Última predicción: ${JSON.stringify(lastPred ?? {})}
 Diseña el plan semanal.`;
 
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemini-2.0-flash",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
         tools: [{ type: "function", function: {
           name: "emit_prevention_plan",
