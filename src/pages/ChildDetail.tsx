@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { computeEmotionalScore, computeScoreWithHistory, riskLabel, hoursAgo } from "@/lib/scoring";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, PieChart, Pie, Cell } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { Brain, FileDown, Sparkles, ArrowLeft, Trophy, AlertTriangle, TrendingUp, Phone, MessageSquare, Target, Clock, Moon, Activity, Smartphone, CheckCircle2, ChevronDown } from "lucide-react";
 import { QuickConnect } from "@/components/QuickConnect";
 
@@ -23,7 +23,6 @@ const DIM_LABELS: Record<string, string> = {
   attention_fragmentation: "Atención",
 };
 
-const PIE_COLORS = ["#6366f1","#8b5cf6","#06b6d4","#10b981","#f59e0b","#ef4444","#ec4899","#14b8a6","#f97316","#a855f7"];
 
 /** Corrige mojibake UTF-8→Latin-1: texto almacenado como bytes UTF-8 interpretados como Latin-1. */
 function fixMojibake(s: string | null | undefined): string {
@@ -776,81 +775,3 @@ const PremiumTrendCard = memo(function PremiumTrendCard({ data }: { data: { date
   );
 });
 
-const _PremiumRadarCard_DELETED = null; // removed
-/*
-const PremiumRadarCard = memo(function PremiumRadarCard({ data }: { data: { app: string; minutos: number }[] }) {
-  const sorted = [...data].sort((a, b) => b.minutos - a.minutos);
-  const top = sorted[0];
-  const total = sorted.reduce((a, d) => a + d.minutos, 0);
-  const pieData = sorted.map(d => ({ name: d.app, value: d.minutos }));
-
-  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-    if (percent < 0.07) return null;
-    const RADIAN = Math.PI / 180;
-    const r = innerRadius + (outerRadius - innerRadius) * 0.55;
-    const x = cx + r * Math.cos(-midAngle * RADIAN);
-    const y = cy + r * Math.sin(-midAngle * RADIAN);
-    return <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>{`${Math.round(percent * 100)}%`}</text>;
-  };
-
-  return (
-    <Card className="p-6 rounded-3xl shadow-soft relative overflow-hidden bg-gradient-to-br from-background via-background to-secondary/5">
-      <div className="flex items-start justify-between mb-3 gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Apps · último día</div>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">Android</span>
-          </div>
-          <h3 className="text-lg font-bold mt-1 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
-            {top ? <>Domina <span className="text-gradient">{top.app}</span></> : "Uso por app"}
-          </h3>
-        </div>
-        {total > 0 && <Badge variant="secondary" className="rounded-full">{total} min totales</Badge>}
-      </div>
-      {pieData.length > 0 ? (
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          <ResponsiveContainer width={230} height={230}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%" cy="50%"
-                innerRadius={58} outerRadius={105}
-                paddingAngle={2}
-                dataKey="value"
-                labelLine={false}
-                label={renderLabel}
-                isAnimationActive
-                animationDuration={900}
-                animationEasing="ease-out"
-              >
-                {pieData.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 12 }}
-                formatter={(v: any) => [`${v} min`, "Uso"]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex flex-col gap-2 min-w-0 flex-1 w-full">
-            {pieData.map((d, i) => (
-              <div key={d.name} className="flex items-center gap-2 text-sm min-w-0">
-                <span className="h-3 w-3 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                <span className="truncate flex-1 text-muted-foreground">{d.name}</span>
-                <span className="font-bold shrink-0 tabular-nums">{d.value}m</span>
-                {total > 0 && (
-                  <span className="text-xs text-muted-foreground shrink-0 w-8 text-right">{Math.round(d.value / total * 100)}%</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <WaitingSkeleton height="h-[240px]" />
-      )}
-    </Card>
-  );
-});
-*/
