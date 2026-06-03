@@ -37,6 +37,7 @@ function fixMojibake(s: string | null | undefined): string {
   }
 }
 
+const _v = "20260603-v4"; // cache bust
 const ChildDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
