@@ -6,7 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { Shield, Wifi, WifiOff } from "lucide-react";
 
 const INGEST_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co/functions/v1/ingest-usage";
-const INTERVAL_MS = 5 * 60 * 1000;
+const INTERVAL_MS = 2 * 60 * 1000; // 2 minutos
 
 export default function Monitor() {
   const [params] = useSearchParams();
@@ -17,18 +17,43 @@ export default function Monitor() {
   const [online, setOnline] = useState(navigator.onLine);
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
 
+  // Contadores de señales conductuales
   const taps = useRef(0);
   const visibilityChanges = useRef(0);
   const orientationChanges = useRef(0);
   const sessionStart = useRef(Date.now());
   const batteryStart = useRef<number | null>(null);
+  const wakeLock = useRef<any>(null);
 
+  // Wake Lock — mantiene pantalla activa en segundo plano (iOS 17+ y Android)
+  useEffect(() => {
+    const acquireWakeLock = async () => {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLock.current = await (navigator as any).wakeLock.request("screen");
+        }
+      } catch { /* no disponible o denegado */ }
+    };
+    acquireWakeLock();
+    // Reacquire cuando la app vuelve al primer plano
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") acquireWakeLock();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      wakeLock.current?.release?.().catch(() => {});
+    };
+  }, []);
+
+  // Inicializar battery API si disponible
   useEffect(() => {
     (navigator as any).getBattery?.().then((b: any) => {
       batteryStart.current = b.level * 100;
     }).catch(() => {});
   }, []);
 
+  // Contadores de eventos
   useEffect(() => {
     const onTap = () => { taps.current++; };
     const onVisibility = () => { visibilityChanges.current++; };
@@ -53,6 +78,7 @@ export default function Monitor() {
     };
   }, []);
 
+  // Función que envía el evento al backend
   const sendEvent = async () => {
     if (!token || token.length < 16) return;
     if (!navigator.onLine) return;
@@ -90,6 +116,7 @@ export default function Monitor() {
       },
     };
 
+    // Reset contadores
     taps.current = 0;
     visibilityChanges.current = 0;
     orientationChanges.current = 0;
@@ -109,13 +136,16 @@ export default function Monitor() {
     }
   };
 
+  // Enviar al montar y cada 5 minutos
   useEffect(() => {
     if (!token || token.length < 16) return;
-    const initial = setTimeout(sendEvent, 30_000);
+    // Primera vez tras 5s
+    const initial = setTimeout(sendEvent, 5_000);
     const interval = setInterval(sendEvent, INTERVAL_MS);
     return () => { clearTimeout(initial); clearInterval(interval); };
   }, [token]);
 
+  // Enviar también al volver a la app (visibilitychange → visible)
   useEffect(() => {
     const handler = () => { if (document.visibilityState === "visible") sendEvent(); };
     document.addEventListener("visibilitychange", handler);
@@ -135,6 +165,7 @@ export default function Monitor() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center justify-center px-6 text-center select-none">
+      {/* Icono */}
       <div className="mb-6">
         <div className="h-24 w-24 rounded-3xl bg-blue-600 flex items-center justify-center shadow-xl mx-auto">
           <Shield className="h-12 w-12 text-white" />
@@ -146,6 +177,7 @@ export default function Monitor() {
         Protegiendo a <strong>{childName}</strong>
       </p>
 
+      {/* Estado */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-6 py-4 w-full max-w-xs mb-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Estado</span>
