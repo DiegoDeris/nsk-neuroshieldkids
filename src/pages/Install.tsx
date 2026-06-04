@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { Download, Smartphone, QrCode, Shield, CheckCircle2 } from "lucide-react";
+import { Download, Smartphone, QrCode, Shield, CheckCircle2, Share, PlusSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-// Update this URL once the repo is created and the first build runs
 const APK_URL = "https://github.com/DiegoDeris/nsk-android/releases/latest/download/app-debug.apk";
+
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+}
 
 export default function Install() {
   const [params] = useSearchParams();
@@ -14,8 +17,14 @@ export default function Install() {
   const childName = params.get("n") ?? "tu hijo/a";
 
   const hasToken = token.length >= 16;
+  const ios = isIOS();
 
-  const steps = useMemo(() => [
+  // URL de monitoreo web para iOS
+  const monitorUrl = hasToken
+    ? `${window.location.origin}/monitor?t=${token}&n=${encodeURIComponent(childName)}`
+    : "";
+
+  const androidSteps = useMemo(() => [
     {
       icon: <Download className="h-6 w-6 text-blue-500" />,
       title: "Descarga la app",
@@ -33,6 +42,24 @@ export default function Install() {
     },
   ], []);
 
+  const iosSteps = useMemo(() => [
+    {
+      icon: <Share className="h-6 w-6 text-blue-500" />,
+      title: "Abre este enlace en Safari",
+      body: "En el iPhone de tu hijo, abre Safari y navega a la URL que aparece en el QR de abajo, o escanéalo directamente.",
+    },
+    {
+      icon: <PlusSquare className="h-6 w-6 text-violet-500" />,
+      title: "Añade a la pantalla de inicio",
+      body: 'En Safari, pulsa el icono de compartir (cuadrado con flecha) y elige "Añadir a pantalla de inicio". Esto instala NeuroShield como app.',
+    },
+    {
+      icon: <Shield className="h-6 w-6 text-emerald-500" />,
+      title: "Protección activa",
+      body: "Abre la app desde la pantalla de inicio. La protección se activa automáticamente y envía datos al panel de control.",
+    },
+  ], []);
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center px-4 py-10">
       {/* Header */}
@@ -42,20 +69,35 @@ export default function Install() {
         <p className="text-slate-500 text-sm mt-1">
           Configura la protección pasiva para <strong>{childName}</strong>
         </p>
+        {/* Badge de plataforma */}
+        <span className={`mt-2 text-xs font-semibold px-3 py-1 rounded-full ${ios ? "bg-slate-800 text-white" : "bg-green-100 text-green-700"}`}>
+          {ios ? "📱 iPhone / iPad" : "🤖 Android"}
+        </span>
       </div>
 
-      {/* Download button */}
-      <a href={APK_URL} download className="w-full max-w-sm mb-6">
-        <Button size="lg" className="w-full gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 text-base shadow-lg">
-          <Download className="h-5 w-5" />
-          Descargar app Android (APK)
-        </Button>
-      </a>
+      {/* Botón principal */}
+      {ios ? (
+        hasToken ? (
+          <a href={monitorUrl} className="w-full max-w-sm mb-6" target="_blank" rel="noreferrer">
+            <Button size="lg" className="w-full gap-3 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl h-14 text-base shadow-lg">
+              <Shield className="h-5 w-5" />
+              Abrir NeuroShield en Safari
+            </Button>
+          </a>
+        ) : null
+      ) : (
+        <a href={APK_URL} download className="w-full max-w-sm mb-6">
+          <Button size="lg" className="w-full gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 text-base shadow-lg">
+            <Download className="h-5 w-5" />
+            Descargar app Android (APK)
+          </Button>
+        </a>
+      )}
 
-      {/* Steps */}
+      {/* Pasos */}
       <Card className="w-full max-w-sm p-5 rounded-3xl shadow-sm mb-6">
         <div className="space-y-5">
-          {steps.map((s, i) => (
+          {(ios ? iosSteps : androidSteps).map((s, i) => (
             <div key={i} className="flex gap-3">
               <div className="shrink-0 h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
                 {s.icon}
@@ -71,19 +113,26 @@ export default function Install() {
         </div>
       </Card>
 
-      {/* Config QR (scanned from within the Android app) */}
+      {/* QR */}
       {hasToken ? (
         <Card className="w-full max-w-sm p-6 rounded-3xl shadow-sm flex flex-col items-center mb-6">
           <div className="flex items-center gap-2 mb-4">
             <QrCode className="h-5 w-5 text-emerald-600" />
-            <span className="font-semibold text-slate-800">QR de configuración</span>
+            <span className="font-semibold text-slate-800">
+              {ios ? "QR — Abre en Safari del iPhone" : "QR de configuración"}
+            </span>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-inner">
-            <QRCodeSVG value={token} size={200} />
+            <QRCodeSVG value={ios ? monitorUrl : token} size={200} />
           </div>
           <p className="text-xs text-slate-500 text-center mt-3 leading-relaxed">
-            Escanea este código <strong>desde dentro de la app</strong> NeuroShield Kids una vez instalada.
+            {ios
+              ? "Escanea con la cámara de iPhone desde el teléfono del niño, o abre la URL directamente en Safari."
+              : "Escanea este código desde dentro de la app NeuroShield Kids una vez instalada."}
           </p>
+          {ios && (
+            <p className="text-xs text-slate-400 text-center mt-2 break-all">{monitorUrl}</p>
+          )}
         </Card>
       ) : (
         <Card className="w-full max-w-sm p-6 rounded-3xl shadow-sm flex flex-col items-center mb-6 border-amber-200 bg-amber-50">
@@ -98,8 +147,6 @@ export default function Install() {
         <Shield className="h-4 w-4" />
         <span>Solo datos de uso de apps. Sin mensajes ni contenido privado.</span>
       </div>
-
-      {/* Privacy note */}
       <div className="w-full max-w-sm mt-6 p-4 rounded-2xl bg-slate-100 text-xs text-slate-500 text-center leading-relaxed">
         <CheckCircle2 className="inline h-4 w-4 text-emerald-500 mr-1" />
         NeuroShield Kids no lee mensajes, fotos ni datos personales. Únicamente registra qué apps se usan y durante cuánto tiempo.
