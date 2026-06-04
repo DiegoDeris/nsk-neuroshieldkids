@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "rm -rf node_modules/.vite dist && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
