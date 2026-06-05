@@ -101,6 +101,7 @@ export default function Monitor() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
+  const [lastError, setLastError] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -253,10 +254,19 @@ export default function Monitor() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, events: [event] }),
       });
-      setStatus(res.ok ? "ok" : "error");
-      if (res.ok) setLastSync(new Date());
-    } catch {
+      if (res.ok) {
+        setStatus("ok");
+        setLastError(null);
+        setLastSync(new Date());
+      } else {
+        let errMsg = `HTTP ${res.status}`;
+        try { const j = await res.json(); errMsg += `: ${j.error ?? JSON.stringify(j)}`; } catch {}
+        setStatus("error");
+        setLastError(errMsg);
+      }
+    } catch (err: any) {
       setStatus("error");
+      setLastError(err?.message ?? "sin conexión");
     }
   };
 
@@ -335,7 +345,7 @@ export default function Monitor() {
           <span className="text-xs text-slate-500">
             {status === "ok" && lastSync ? `Último envío: ${lastSync.toLocaleTimeString("es")}` :
              status === "sending" ? "Enviando datos…" :
-             status === "error" ? "Error al enviar. Reintentando…" :
+             status === "error" ? (lastError ?? "Error al enviar. Reintentando…") :
              "Iniciando protección…"}
           </span>
         </div>
