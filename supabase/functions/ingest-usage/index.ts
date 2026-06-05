@@ -212,11 +212,14 @@ Deno.serve(async (req) => {
     const { error: insErr } = await admin.from("usage_events").insert(rows);
     if (insErr) throw insErr;
 
-    // Agregar métricas de forma NO BLOQUEANTE (fire-and-forget) — no añade latencia al cliente
+    // Agregar métricas de forma BLOQUEANTE — edge workers matan el proceso al retornar, fire-and-forget no ejecuta
     const days = Array.from(new Set(rows.map(r => r.occurred_at.slice(0, 10))));
-    Promise.all(
+    const aggResults = await Promise.all(
       days.map(d => admin.rpc("aggregate_events_to_metric", { _child_id: child.id, _day: d }))
-    ).catch(err => console.error("aggregate error (background):", err));
+    );
+    for (const r of aggResults) {
+      if (r.error) console.error("aggregate error:", r.error);
+    }
 
     // Actualizar last_ingest_at (await — fire-and-forget no garantiza ejecución en edge workers)
     await admin.from("children").update({ last_ingest_at: new Date().toISOString() }).eq("id", child.id);

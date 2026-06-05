@@ -6,7 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { Shield, Wifi, WifiOff } from "lucide-react";
 
 const INGEST_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co/functions/v1/ingest-usage";
-const INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
+const INTERVAL_MS = 2 * 60 * 1000; // 2 minutos
 
 export default function Monitor() {
   const [params] = useSearchParams();
@@ -23,6 +23,28 @@ export default function Monitor() {
   const orientationChanges = useRef(0);
   const sessionStart = useRef(Date.now());
   const batteryStart = useRef<number | null>(null);
+  const wakeLock = useRef<any>(null);
+
+  // Wake Lock — mantiene pantalla activa en segundo plano (iOS 17+ y Android)
+  useEffect(() => {
+    const acquireWakeLock = async () => {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLock.current = await (navigator as any).wakeLock.request("screen");
+        }
+      } catch { /* no disponible o denegado */ }
+    };
+    acquireWakeLock();
+    // Reacquire cuando la app vuelve al primer plano
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") acquireWakeLock();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      wakeLock.current?.release?.().catch(() => {});
+    };
+  }, []);
 
   // Inicializar battery API si disponible
   useEffect(() => {
@@ -117,8 +139,8 @@ export default function Monitor() {
   // Enviar al montar y cada 5 minutos
   useEffect(() => {
     if (!token || token.length < 16) return;
-    // Primera vez tras 30s para no spamear en el primer render
-    const initial = setTimeout(sendEvent, 30_000);
+    // Primera vez tras 5s
+    const initial = setTimeout(sendEvent, 5_000);
     const interval = setInterval(sendEvent, INTERVAL_MS);
     return () => { clearTimeout(initial); clearInterval(interval); };
   }, [token]);
