@@ -102,9 +102,9 @@ export const QuickConnect = ({ child, onChange }: Props) => {
   };
 
   const [qrMode, setQrMode] = useState<"install" | "token">("install");
-  // monitor QR → opens /monitor directly (auto-connect, no install steps)
+  // install QR → opens /install page (first-time setup with APK download)
   // token QR  → raw token (for already-installed app)
-  const installQrPayload = `${window.location.origin}/monitor?t=${encodeURIComponent(token)}&n=${encodeURIComponent(child.name)}`;
+  const installQrPayload = `${window.location.origin}/install?t=${encodeURIComponent(token)}&n=${encodeURIComponent(child.name)}`;
   const qrPayload = qrMode === "install" ? installQrPayload : token;
 
   if (guided) {

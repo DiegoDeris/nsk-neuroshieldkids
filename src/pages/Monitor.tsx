@@ -1,12 +1,97 @@
-// Página de monitoreo web para iOS (y cualquier dispositivo).
-// El padre comparte esta URL al hijo; al abrirla en Safari y añadirla al inicio,
-// el navegador envía metadatos de comportamiento cada 5 min a ingest-usage.
+// Página de monitoreo web para iOS/Android.
+// El padre comparte esta URL al hijo; al abrirla y añadirla al inicio,
+// el navegador envía metadatos de comportamiento cada 2 min a ingest-usage.
+// Con Service Worker + Periodic Background Sync funciona aunque esté en background.
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Shield, Wifi, WifiOff } from "lucide-react";
+import { Shield, Wifi, WifiOff, Download } from "lucide-react";
 
 const INGEST_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co/functions/v1/ingest-usage";
-const INTERVAL_MS = 2 * 60 * 1000; // 2 minutos
+const INTERVAL_MS = 60 * 1000; // 1 minuto mientras está en primer plano
+const DB_NAME = "nsk-monitor";
+const DB_VERSION = 1;
+const STORE = "config";
+const SYNC_TAG = "nsk-bg-sync";
+
+// ── sendBeacon (iOS: único método que funciona en pagehide) ───────────────────
+
+function beaconEvent(token: string) {
+  if (!token || token.length < 16) return;
+  const now = new Date();
+  const hour = now.getHours();
+  const payload = JSON.stringify({
+    token,
+    events: [{
+      app_name: "Safari iOS",
+      duration_seconds: 60,
+      occurred_at: now.toISOString(),
+      event_type: "app_usage",
+      metadata: {
+        interactions_per_min: 0,
+        visibility_changes: 0,
+        orientation_changes: 0,
+        is_night: hour >= 22 || hour < 7,
+        hour_of_day: hour,
+        battery_drain_percent: 0,
+        network_type: "unknown",
+        session_minutes: 1,
+        platform: "ios_web",
+        source: "beacon_pagehide",
+      },
+    }],
+  });
+  navigator.sendBeacon(INGEST_URL, new Blob([payload], { type: "application/json" }));
+}
+
+// ── IndexedDB helpers ─────────────────────────────────────────────────────────
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      (e.target as IDBOpenDBRequest).result.createObjectStore(STORE);
+    };
+    req.onsuccess = (e) => resolve((e.target as IDBOpenDBRequest).result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveToken(token: string) {
+  const db = await openDB();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).put(token, "token");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ── Registro SW y periodicSync ────────────────────────────────────────────────
+
+async function registerSW() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register("/monitor-sw.js", { scope: "/" });
+    await navigator.serviceWorker.ready;
+
+    // Periodic Background Sync (Chrome Android)
+    if ("periodicSync" in reg) {
+      try {
+        const status = await (navigator as any).permissions.query({ name: "periodic-background-sync" });
+        if (status.state === "granted") {
+          await (reg as any).periodicSync.register(SYNC_TAG, { minInterval: 2 * 60 * 1000 });
+        }
+      } catch { /* no soportado */ }
+    }
+
+    // Background Sync one-shot como fallback
+    if ("sync" in reg) {
+      try { await (reg as any).sync.register(SYNC_TAG); } catch { /* ok */ }
+    }
+  } catch { /* sw no disponible */ }
+}
+
+// ── Componente ────────────────────────────────────────────────────────────────
 
 export default function Monitor() {
   const [params] = useSearchParams();
@@ -16,6 +101,8 @@ export default function Monitor() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   // Contadores de señales conductuales
   const taps = useRef(0);
@@ -25,17 +112,33 @@ export default function Monitor() {
   const batteryStart = useRef<number | null>(null);
   const wakeLock = useRef<any>(null);
 
-  // Wake Lock — mantiene pantalla activa en segundo plano (iOS 17+ y Android)
+  // ── Detectar si ya instalada como PWA ──
+  useEffect(() => {
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setIsInstalled(true);
+    }
+    // Capturar prompt de instalación (Chrome Android)
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setIsInstalled(true));
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, []);
+
+  // ── Wake Lock ──
   useEffect(() => {
     const acquireWakeLock = async () => {
       try {
         if ("wakeLock" in navigator) {
           wakeLock.current = await (navigator as any).wakeLock.request("screen");
         }
-      } catch { /* no disponible o denegado */ }
+      } catch { /* denegado */ }
     };
     acquireWakeLock();
-    // Reacquire cuando la app vuelve al primer plano
     const onVisibility = () => {
       if (document.visibilityState === "visible") acquireWakeLock();
     };
@@ -46,14 +149,14 @@ export default function Monitor() {
     };
   }, []);
 
-  // Inicializar battery API si disponible
+  // ── Battery API ──
   useEffect(() => {
     (navigator as any).getBattery?.().then((b: any) => {
       batteryStart.current = b.level * 100;
     }).catch(() => {});
   }, []);
 
-  // Contadores de eventos
+  // ── Contadores de eventos ──
   useEffect(() => {
     const onTap = () => { taps.current++; };
     const onVisibility = () => { visibilityChanges.current++; };
@@ -78,7 +181,27 @@ export default function Monitor() {
     };
   }, []);
 
-  // Función que envía el evento al backend
+  // ── Registrar SW + guardar token en IndexedDB ──
+  useEffect(() => {
+    if (!token || token.length < 16) return;
+    saveToken(token).catch(() => {});
+    registerSW();
+  }, [token]);
+
+  // ── sendBeacon en pagehide y visibilitychange→hidden (iOS) ──
+  useEffect(() => {
+    if (!token || token.length < 16) return;
+    const onHide = () => beaconEvent(token);
+    const onVisHidden = () => { if (document.visibilityState === "hidden") beaconEvent(token); };
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVisHidden);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisHidden);
+    };
+  }, [token]);
+
+  // ── Función de envío ──
   const sendEvent = async () => {
     if (!token || token.length < 16) return;
     if (!navigator.onLine) return;
@@ -113,6 +236,7 @@ export default function Monitor() {
         network_type: (navigator as any).connection?.effectiveType ?? "unknown",
         session_minutes: sessionMin,
         platform: "ios_web",
+        source: "foreground",
       },
     };
 
@@ -136,21 +260,32 @@ export default function Monitor() {
     }
   };
 
-  // Enviar al montar y cada 5 minutos
+  // ── Intervalo de envío ──
   useEffect(() => {
     if (!token || token.length < 16) return;
-    // Primera vez tras 5s
-    const initial = setTimeout(sendEvent, 5_000);
+    // Primer envío inmediato — el dashboard muestra "live" al instante
+    const initial = setTimeout(sendEvent, 500);
     const interval = setInterval(sendEvent, INTERVAL_MS);
     return () => { clearTimeout(initial); clearInterval(interval); };
   }, [token]);
 
-  // Enviar también al volver a la app (visibilitychange → visible)
+  // ── Enviar al volver a primer plano ──
   useEffect(() => {
     const handler = () => { if (document.visibilityState === "visible") sendEvent(); };
     document.addEventListener("visibilitychange", handler);
     return () => document.removeEventListener("visibilitychange", handler);
   }, [token]);
+
+  // ── Instalar PWA ──
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") {
+      setInstallPrompt(null);
+      setIsInstalled(true);
+    }
+  };
 
   if (!token || token.length < 16) {
     return (
@@ -191,7 +326,12 @@ export default function Monitor() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${status === "ok" ? "bg-emerald-500" : status === "error" ? "bg-red-400" : status === "sending" ? "bg-amber-400 animate-pulse" : "bg-slate-300"}`} />
+          <div className={`h-2 w-2 rounded-full ${
+            status === "ok" ? "bg-emerald-500" :
+            status === "error" ? "bg-red-400" :
+            status === "sending" ? "bg-amber-400 animate-pulse" :
+            "bg-slate-300"
+          }`} />
           <span className="text-xs text-slate-500">
             {status === "ok" && lastSync ? `Último envío: ${lastSync.toLocaleTimeString("es")}` :
              status === "sending" ? "Enviando datos…" :
@@ -201,12 +341,39 @@ export default function Monitor() {
         </div>
       </div>
 
+      {/* Botón instalar PWA — solo si no instalada y hay prompt disponible */}
+      {!isInstalled && installPrompt && (
+        <button
+          onClick={handleInstall}
+          className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-md mb-4 active:scale-95 transition-transform"
+        >
+          <Download className="h-4 w-4" />
+          Añadir al inicio para monitoreo continuo
+        </button>
+      )}
+
+      {/* Instrucción iOS (Safari no lanza beforeinstallprompt) */}
+      {!isInstalled && !installPrompt && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 w-full max-w-xs mb-4 text-left">
+          <p className="text-xs font-semibold text-blue-700 mb-1">Para monitoreo en segundo plano:</p>
+          <p className="text-xs text-blue-600 leading-relaxed">
+            Pulsa <strong>Compartir</strong> → <strong>Añadir a pantalla de inicio</strong> y luego abre la app desde el icono.
+          </p>
+        </div>
+      )}
+
+      {isInstalled && (
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-3 w-full max-w-xs mb-4">
+          <p className="text-xs font-semibold text-emerald-700">✓ App instalada — monitoreo activo en segundo plano</p>
+        </div>
+      )}
+
       <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-        Esta pantalla protege a {childName} en segundo plano. No leas mensajes ni fotos — solo registra patrones de uso.
+        Esta pantalla protege a {childName} en segundo plano. No lee mensajes ni fotos — solo registra patrones de uso.
       </p>
 
       <div className="mt-8 text-xs text-slate-300">
-        Mantén esta app abierta en Safari para un monitoreo continuo.
+        Mantén esta app abierta para un monitoreo continuo.
       </div>
     </div>
   );

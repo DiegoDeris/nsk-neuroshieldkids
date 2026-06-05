@@ -11,7 +11,7 @@ import { Plus, Brain, AlertTriangle, TrendingUp, Sparkles, Activity, WifiOff, Ch
 import { riskColor } from "@/lib/scoring";
 import { AddDeviceModal } from "@/components/AddDeviceModal";
 
-type Child = { id: string; name: string; age: number; avatar_emoji: string | null; last_ingest_at?: string | null; ingest_token?: string | null };
+type Child = { id: string; name: string; age: number; avatar_emoji: string | null; last_ingest_at?: string | null };
 
 function fixMojibake(s: string | null | undefined): string {
   if (!s) return s ?? "";
@@ -277,7 +277,6 @@ const Dashboard = () => {
           childId={deviceModal.id}
           childName={deviceModal.name}
           childAvatar={deviceModal.avatar_emoji ?? "🧒"}
-          ingestToken={deviceModal.ingest_token}
           open={!!deviceModal}
           onOpenChange={(v) => { if (!v) setDeviceModal(null); }}
           onConnected={() => {
