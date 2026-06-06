@@ -14,14 +14,22 @@ type Lesson = {
 };
 
 const LESSONS: Lesson[] = [
-  { key: "talk",          icon: MessageCircle, category: "communication", ageMin: 6,  ageMax: 18, minutes: 4 },
-  { key: "boundaries",    icon: ShieldAlert,   category: "communication", ageMin: 6,  ageMax: 18, minutes: 4 },
-  { key: "night",         icon: Moon,          category: "sleep",         ageMin: 6,  ageMax: 18, minutes: 3 },
-  { key: "habits",        icon: Heart,         category: "wellbeing",     ageMin: 6,  ageMax: 18, minutes: 4 },
-  { key: "warning",       icon: ShieldAlert,   category: "risks",         ageMin: 9,  ageMax: 18, minutes: 5 },
-  { key: "compulsive",    icon: Brain,         category: "risks",         ageMin: 8,  ageMax: 18, minutes: 5 },
-  { key: "dopamine",      icon: Brain,         category: "emotion",       ageMin: 10, ageMax: 18, minutes: 6 },
-  { key: "limits_broken", icon: Heart,         category: "wellbeing",     ageMin: 6,  ageMax: 18, minutes: 4 },
+  { key: "talk",            icon: MessageCircle, category: "communication", ageMin: 6,  ageMax: 18, minutes: 4 },
+  { key: "boundaries",      icon: ShieldAlert,   category: "communication", ageMin: 6,  ageMax: 18, minutes: 4 },
+  { key: "family_rules",    icon: MessageCircle, category: "communication", ageMin: 6,  ageMax: 18, minutes: 4 },
+  { key: "night",           icon: Moon,          category: "sleep",         ageMin: 6,  ageMax: 18, minutes: 3 },
+  { key: "night_routine",   icon: Moon,          category: "sleep",         ageMin: 6,  ageMax: 18, minutes: 4 },
+  { key: "habits",          icon: Heart,         category: "wellbeing",     ageMin: 6,  ageMax: 18, minutes: 4 },
+  { key: "limits_broken",   icon: Heart,         category: "wellbeing",     ageMin: 6,  ageMax: 18, minutes: 4 },
+  { key: "screen_awareness",icon: Heart,         category: "wellbeing",     ageMin: 6,  ageMax: 18, minutes: 4 },
+  { key: "warning",         icon: ShieldAlert,   category: "risks",         ageMin: 9,  ageMax: 18, minutes: 5 },
+  { key: "compulsive",      icon: Brain,         category: "risks",         ageMin: 8,  ageMax: 18, minutes: 5 },
+  { key: "anxiety_digital", icon: ShieldAlert,   category: "risks",         ageMin: 9,  ageMax: 18, minutes: 5 },
+  { key: "dopamine",        icon: Brain,         category: "emotion",       ageMin: 10, ageMax: 18, minutes: 6 },
+  { key: "boredom",         icon: Brain,         category: "emotion",       ageMin: 8,  ageMax: 18, minutes: 4 },
+  { key: "attention",       icon: Brain,         category: "emotion",       ageMin: 9,  ageMax: 18, minutes: 5 },
+  { key: "morning_start",   icon: Heart,         category: "wellbeing",     ageMin: 6,  ageMax: 18, minutes: 3 },
+  { key: "weekend_screen",  icon: Heart,         category: "wellbeing",     ageMin: 6,  ageMax: 18, minutes: 4 },
 ];
 
 const CATEGORIES = ["all", "communication", "sleep", "risks", "wellbeing", "emotion"] as const;

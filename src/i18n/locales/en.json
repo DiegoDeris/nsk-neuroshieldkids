@@ -379,12 +379,100 @@
         "title": "Setting limits without battles",
         "body": "Limits are respected when understood, not when imposed.",
         "steps": [
-          "Explain the why (sleep, attention, real life), not just the what.",
-          "Use the app to show objective data: 'this week 18h on TikTok'.",
-          "Agree consequences together BEFORE, not during a conflict.",
-          "Recognize their progress with points in Quests when they comply."
+          "Explain the why — sleep, focus, more energy — not just the what.",
+          "Show them the NSK data. Talking with real numbers is harder to argue with.",
+          "Agree together what happens if the limit is broken, BEFORE it happens.",
+          "When they keep to it, say so. Recognition works better than punishment."
         ],
-        "tip": "Firm and warm beats harsh or absent. Aim for 'firm + warm'."
+        "tip": "Firm and warm beats harsh or absent. Aim for firm and kind."
+      },
+      "family_rules": {
+        "title": "Agreeing digital rules as a family",
+        "body": "Rules agreed together are kept far better than rules handed down from above.",
+        "steps": [
+          "Get the family together in a calm moment and ask: what phone rules would make sense at home?",
+          "Write down everyone's suggestions, including the child's. Their opinion matters.",
+          "Agree on a maximum of 3 clear rules. A few clear ones beat many confusing ones.",
+          "Put them somewhere visible. Review every month and adjust what isn't working."
+        ],
+        "tip": "When the child helps create the rule, they feel ownership of it — and keep it far more."
+      },
+      "night_routine": {
+        "title": "Creating a screen-free night routine",
+        "body": "What we do in the last hour before sleep determines how we sleep. Screens are the worst ending.",
+        "steps": [
+          "Pick a phone cut-off time: 30-60 minutes before sleep is enough to start.",
+          "Replace that time with something calm: reading, soft music, a conversation, a shower.",
+          "Put the phone on charge outside the bedroom before the agreed time.",
+          "Do this for several days in a row. The body builds the habit in under two weeks."
+        ],
+        "tip": "A night routine is the most valuable habit there is. It improves sleep, mood and focus the next day."
+      },
+      "screen_awareness": {
+        "title": "How much screen time is too much",
+        "body": "There's no magic number, but there are clear signs that use is affecting your child.",
+        "steps": [
+          "Notice how they are after a lot of screen time: irritable, tired, unfocused?",
+          "Compare their screen time with their sleep, physical activity and family time.",
+          "Check in NSK how much time they've had this week. Objective data is more useful than gut feeling.",
+          "If digital time is overtaking the offline activities they enjoy, it's time to adjust."
+        ],
+        "tip": "The problem isn't the number of hours, it's the impact on their life. Watch the impact, not just the clock."
+      },
+      "anxiety_digital": {
+        "title": "When the phone creates anxiety",
+        "body": "The phone can relieve discomfort short-term, but it can also be the source of the problem.",
+        "steps": [
+          "Notice if they use the phone to escape difficult situations: arguments, boredom, loneliness.",
+          "Check if they're more anxious on high-use days than low-use days.",
+          "NSK measures screen time and compulsive sessions. Together, these can signal the phone is being used to manage anxiety.",
+          "Talk without judging: ask what they feel when the phone isn't nearby."
+        ],
+        "tip": "The phone doesn't create the anxiety, but it can maintain it. If the pattern repeats, consider speaking with a professional."
+      },
+      "boredom": {
+        "title": "Boredom is not the enemy",
+        "body": "When a child is bored and automatically reaches for the phone, they're missing the chance to learn to manage their own mind.",
+        "steps": [
+          "Next time they say 'I'm bored', wait 10 minutes before letting them pick up the phone.",
+          "Keep a short list at home of things to do without a screen — so you don't have to invent it in the moment.",
+          "Normalise boredom: explain that the discomfort of not knowing what to do passes on its own, and that's when the best ideas appear.",
+          "Reinforce when they come up with something themselves. That's exactly what you want."
+        ],
+        "tip": "Boredom is where creativity starts. Letting them sit with it for a few minutes is one of the best gifts you can give."
+      },
+      "attention": {
+        "title": "Focus in the age of the phone",
+        "body": "Every notification interrupts the brain and it can take up to 20 minutes to fully refocus.",
+        "steps": [
+          "When doing homework or reading, the phone must be in another room — not face-down on the desk.",
+          "Turn off notifications for non-urgent apps. Fewer notifications, more focus.",
+          "Try the block method: 25 minutes of work, 5 minutes of rest. Rest does NOT mean the phone.",
+          "If they struggle to focus, practise together with gradually longer stretches without interruptions."
+        ],
+        "tip": "Focus is a muscle. It's trained like any skill: with consistent practice and no interruptions."
+      },
+      "morning_start": {
+        "title": "Starting the day without checking the phone",
+        "body": "The first thing we do when we wake up sets the brain's tone for the rest of the day.",
+        "steps": [
+          "Agree that the first half hour of the day is phone-free for everyone — parents included.",
+          "Swap the phone alarm for a physical alarm clock and leave the phone charging in another room.",
+          "The first few days can be hard. That's normal. The brain takes a few days to adapt.",
+          "When they manage it for several days in a row, recognise it and add it as a quest in NSK."
+        ],
+        "tip": "Starting the day without notifications lowers stress from the very first moment. They notice it, and so do you."
+      },
+      "weekend_screen": {
+        "title": "Weekends and screen time",
+        "body": "A weekend without clear rules can become the highest-use moment of the week.",
+        "steps": [
+          "Agree a screen limit for the weekend — different from weekdays if needed, but it must exist.",
+          "Plan at least one offline family activity each weekend: an outing, a game, a visit.",
+          "If NSK detects a usage spike on Saturday or Sunday, use it as a calm conversation starter, not a blame.",
+          "Leave some room: the weekend is for rest, not for rigid schedules."
+        ],
+        "tip": "A weekend with more digital freedom doesn't ruin the week's habits — as long as there's a clear agreement in place."
       }
     }
   },
@@ -443,7 +531,9 @@
       "no_night_screen": { "title": "No screen after 10pm", "desc": "Phone off or charging outside the room before 10pm. No negotiation." },
       "slow_morning": { "title": "No phone until after breakfast", "desc": "The first hour of the day without the phone. Start the day calmly, not with notifications." },
       "max_screen_day": { "title": "Max 90 minutes of screen today", "desc": "A full day with less than an hour and a half of phone time in total. A one-day challenge." },
-      "pause_before_pick": { "title": "Wait 5 minutes before picking it up", "desc": "Every time they feel the urge, wait 5 minutes before picking up the phone. Train the pause." }
+      "pause_before_pick": { "title": "Wait 5 minutes before picking it up", "desc": "Every time they feel the urge, wait 5 minutes before picking up the phone. Train the pause." },
+      "read_15min":        { "title": "15 minutes of reading a day", "desc": "Every day, 15 minutes reading something on paper or a digital book. No notifications, no interruptions." },
+      "sport_day":         { "title": "Physical activity today", "desc": "Any sport or physical movement for at least 30 minutes. The body needs its time too." }
     }
   },
   "wizard": {

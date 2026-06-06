@@ -13,12 +13,18 @@ import { Trophy, Flame, Plus, Check, Sparkles, Target, Star } from "lucide-react
 import { toast } from "sonner";
 
 const PRESETS = [
-  { key: "screen_break", points: 20, days: 3, category: "habit" },
-  { key: "no_phone_dinner", points: 25, days: 5, category: "family" },
-  { key: "sleep_no_phone", points: 30, days: 7, category: "sleep" },
-  { key: "outdoor", points: 20, days: 3, category: "wellbeing" },
-  { key: "homework_first", points: 15, days: 5, category: "habit" },
-  { key: "social_pause", points: 25, days: 3, category: "wellbeing" },
+  { key: "screen_break",     points: 20, days: 3,  category: "habit" },
+  { key: "no_phone_dinner",  points: 25, days: 5,  category: "family" },
+  { key: "sleep_no_phone",   points: 30, days: 7,  category: "sleep" },
+  { key: "outdoor",          points: 20, days: 3,  category: "wellbeing" },
+  { key: "homework_first",   points: 15, days: 5,  category: "habit" },
+  { key: "social_pause",     points: 25, days: 3,  category: "wellbeing" },
+  { key: "no_night_screen",  points: 30, days: 7,  category: "sleep" },
+  { key: "slow_morning",     points: 20, days: 5,  category: "habit" },
+  { key: "max_screen_day",   points: 25, days: 3,  category: "wellbeing" },
+  { key: "pause_before_pick",points: 20, days: 7,  category: "habit" },
+  { key: "read_15min",       points: 20, days: 5,  category: "wellbeing" },
+  { key: "sport_day",        points: 25, days: 3,  category: "wellbeing" },
 ];
 
 const Quests = () => {

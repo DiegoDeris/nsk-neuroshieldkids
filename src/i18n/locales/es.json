@@ -379,12 +379,100 @@
         "title": "Poner límites sin batallas",
         "body": "Los límites se respetan cuando se entienden, no cuando se imponen.",
         "steps": [
-          "Explica el porqué (sueño, atención, vida real), no solo el qué.",
-          "Usa la app para mostrar datos objetivos: 'esta semana 18h en TikTok'.",
-          "Acordad consecuencias juntos ANTES, no en el momento del conflicto.",
-          "Reconoce sus avances con puntos en Retos cuando cumple."
+          "Explica el porqué: el sueño, la atención en clase, tener más energía. No solo el qué.",
+          "Muéstrale los datos de NSK: hablar con números reales es más difícil de discutir.",
+          "Acordad juntos qué pasa si se supera el límite, ANTES de que ocurra.",
+          "Cuando lo cumple, díselo. El reconocimiento funciona mejor que el castigo."
         ],
-        "tip": "El límite firme y cariñoso supera al límite duro o ausente. Apunta a 'firme + cálido'."
+        "tip": "Ser firme con cariño funciona mejor que ser duro o no poner ningún límite."
+      },
+      "family_rules": {
+        "title": "Acordar normas digitales en familia",
+        "body": "Las normas que se acuerdan juntos se cumplen mucho mejor que las que se imponen.",
+        "steps": [
+          "Reúne a la familia en un momento tranquilo y pregunta: ¿qué normas del móvil tendría sentido tener en casa?",
+          "Escribe las propuestas de todos, también las del niño. Que sienta que su opinión cuenta.",
+          "Acordad máximo 3 normas concretas. Pocas y claras son mejores que muchas y confusas.",
+          "Ponedlas en un sitio visible. Revisadlas cada mes y ajustad lo que no funcione."
+        ],
+        "tip": "Cuando el niño ayuda a crear la norma, la siente como suya y la cumple mucho más."
+      },
+      "night_routine": {
+        "title": "Crear una rutina nocturna sin pantalla",
+        "body": "Lo que hacemos en la última hora antes de dormir determina cómo dormimos. La pantalla es el peor final.",
+        "steps": [
+          "Elige una hora de corte del móvil: 30-60 minutos antes de dormir es suficiente para empezar.",
+          "Sustituye ese tiempo por algo tranquilo: leer, música suave, hablar, ducharse.",
+          "Pon el móvil a cargar fuera del dormitorio antes de la hora acordada.",
+          "Haz esto varios días seguidos. El cuerpo crea el hábito en menos de dos semanas."
+        ],
+        "tip": "La rutina nocturna es el hábito más rentable que existe. Mejora el sueño, el humor y la concentración al día siguiente."
+      },
+      "screen_awareness": {
+        "title": "Cuánto tiempo de pantalla es demasiado",
+        "body": "No hay un número mágico, pero hay señales claras de que el uso está afectando al niño.",
+        "steps": [
+          "Fíjate en cómo está después de mucho tiempo de pantalla: ¿irritable, cansado, desconcentrado?",
+          "Compara su tiempo de pantalla con sus horas de sueño, actividad física y tiempo en familia.",
+          "Revisa en NSK cuánto tiempo lleva al día esta semana. Los datos objetivos son más útiles que la percepción.",
+          "Si ves que el tiempo digital supera al tiempo offline de actividades que le gustan, es momento de ajustar."
+        ],
+        "tip": "El problema no es el número de horas, sino el impacto que tiene en su vida. Observa el impacto, no solo el reloj."
+      },
+      "anxiety_digital": {
+        "title": "Cuando el móvil genera ansiedad",
+        "body": "El móvil puede aliviar el malestar a corto plazo, pero también puede ser la fuente del problema.",
+        "steps": [
+          "Observa si usa el móvil para escapar de situaciones difíciles: peleas, aburrimiento, soledad.",
+          "Fíjate si está más ansioso los días de mucho uso que los días de poco uso.",
+          "NSK mide el tiempo de pantalla y las sesiones compulsivas. Juntos pueden ser señal de que el móvil se usa para calmar la ansiedad.",
+          "Habla con él sin juzgar: pregúntale qué siente cuando no tiene el móvil cerca."
+        ],
+        "tip": "El móvil no crea la ansiedad, pero puede mantenerla. Si el patrón se repite, considera hablar con un profesional."
+      },
+      "boredom": {
+        "title": "El aburrimiento no es el enemigo",
+        "body": "Cuando el niño se aburre y coge el móvil de forma automática, está perdiendo la oportunidad de aprender a gestionar su mente.",
+        "steps": [
+          "La próxima vez que diga 'me aburro', espera 10 minutos antes de dejarle coger el móvil.",
+          "Tened una lista corta en casa de cosas que se pueden hacer sin pantalla: no hay que inventarla en el momento.",
+          "Normaliza el aburrimiento: explícale que la incomodidad de no saber qué hacer pasa sola, y es cuando aparecen las mejores ideas.",
+          "Refuerza cuando inventa algo por su cuenta: eso es exactamente lo que queremos."
+        ],
+        "tip": "El aburrimiento es el punto de partida de la creatividad. Dejarlo sentirlo unos minutos es uno de los mejores regalos que puedes hacerle."
+      },
+      "attention": {
+        "title": "Concentración en la era del móvil",
+        "body": "Cada notificación interrumpe el cerebro y cuesta hasta 20 minutos volver a concentrarse del todo.",
+        "steps": [
+          "Cuando haga deberes o lea, el móvil debe estar en otro sitio, no boca abajo en la mesa.",
+          "Apagad las notificaciones de las apps que no sean urgentes. Pocas notificaciones, más concentración.",
+          "Introduce el método de bloques: 25 minutos de tarea, 5 de descanso. El descanso NO es el móvil.",
+          "Si ve que le cuesta concentrarse, practica con él tiempos cada vez más largos sin interrupciones."
+        ],
+        "tip": "La concentración es un músculo. Se entrena igual que cualquier habilidad: con práctica constante y sin interrupciones."
+      },
+      "morning_start": {
+        "title": "Empezar el día sin mirar el móvil",
+        "body": "La primera cosa que hacemos al levantarnos programa el cerebro para el resto del día.",
+        "steps": [
+          "Pactad que la primera media hora del día es sin móvil para todos, incluidos los padres.",
+          "Sustituye el despertador del móvil por un despertador físico y deja el móvil cargando en otro cuarto.",
+          "Los primeros días puede costar. Es normal. El cerebro tarda unos días en adaptarse.",
+          "Cuando lo consiga varios días seguidos, reconócelo y ponedlo como reto en NSK."
+        ],
+        "tip": "Empezar el día sin notificaciones baja el nivel de estrés desde el primer momento. Lo nota él y lo notas tú."
+      },
+      "weekend_screen": {
+        "title": "Los fines de semana y la pantalla",
+        "body": "El fin de semana sin normas claras puede convertirse en el momento de mayor uso de la semana.",
+        "steps": [
+          "Acordad un límite de pantalla para el fin de semana, diferente al de entre semana si es necesario, pero que exista.",
+          "Planificad al menos una actividad offline en familia cada fin de semana: salida, juego, visita.",
+          "Si el sábado o domingo NSK detecta un pico de uso, úsalo como excusa para hablar sin culpar.",
+          "Dejad algo de margen: el fin de semana es para descansar, no para cumplir horarios estrictos."
+        ],
+        "tip": "Un fin de semana con más libertad digital no arruina los hábitos de la semana si hay un acuerdo previo y claro."
       }
     }
   },
@@ -443,7 +531,9 @@
       "no_night_screen": { "title": "Sin pantalla después de las 22h", "desc": "El móvil se apaga o queda cargando fuera del cuarto antes de las 22h. Sin negociación." },
       "slow_morning": { "title": "Sin móvil hasta terminar el desayuno", "desc": "La primera hora del día sin mirar el móvil. Empieza el día con calma, no con notificaciones." },
       "max_screen_day": { "title": "Máximo 90 minutos de pantalla hoy", "desc": "Un día entero con menos de hora y media de móvil en total. Un reto de un solo día." },
-      "pause_before_pick": { "title": "Esperar 5 minutos antes de coger el móvil", "desc": "Cada vez que sienta el impulso, esperar 5 minutos antes de cogerlo. Entrena la pausa." }
+      "pause_before_pick": { "title": "Esperar 5 minutos antes de coger el móvil", "desc": "Cada vez que sienta el impulso, esperar 5 minutos antes de cogerlo. Entrena la pausa." },
+      "read_15min":        { "title": "15 minutos de lectura al día", "desc": "Cada día, 15 minutos de leer algo en papel o libro digital. Sin notificaciones ni interrupciones." },
+      "sport_day":         { "title": "Actividad física hoy", "desc": "Cualquier deporte o movimiento físico durante al menos 30 minutos. El cuerpo también necesita su tiempo." }
     }
   },
   "wizard": {
