@@ -310,15 +310,15 @@
         "tip": "Evita frases como 'estás todo el día en el móvil'. Sustitúyelas por '¿qué te aporta esta app?'."
       },
       "warning": {
-        "title": "Señales de alarma en redes sociales",
-        "body": "Patrones tempranos que pueden indicar ansiedad, comparación social tóxica o aislamiento.",
+        "title": "Señales de que algo no va bien con el móvil",
+        "body": "Hay patrones que avisan antes de que el problema sea grande. Aprende a reconocerlos.",
         "steps": [
-          "Observa cambios bruscos de humor justo tras usar el móvil.",
-          "Vigila uso nocturno >30min y aperturas compulsivas (>10 desbloqueos en 1h).",
-          "Detecta dependencia de una sola app (>70% del tiempo).",
-          "Habla con tu hijo si aparecen 2+ señales durante una semana."
+          "Fíjate si cambia de humor de golpe justo después de usar el móvil.",
+          "Observa si usa el móvil por la noche cuando debería estar durmiendo, o si lo abre muchas veces seguidas.",
+          "Presta atención si pasa casi todo su tiempo en una sola app y se pone nervioso cuando no puede usarla.",
+          "Si ves dos o más de estas señales durante una semana, es momento de hablar con calma."
         ],
-        "tip": "Configura una regla 'session_burst' en Reglas para detectarlo automáticamente."
+        "tip": "NSK detecta estos patrones automáticamente y te avisa. No tienes que vigilar tú solo."
       },
       "night": {
         "title": "Higiene digital nocturna",
@@ -343,15 +343,15 @@
         "tip": "El cerebro infantil aprende por refuerzo. Premia presencia, no ausencia."
       },
       "dopamine": {
-        "title": "Dopamina, scroll infinito y atención",
-        "body": "Por qué TikTok, Reels y Shorts son tan adictivos para cerebros en desarrollo.",
+        "title": "Por qué no puede parar de hacer scroll",
+        "body": "TikTok, Reels y Shorts están diseñados para que el cerebro no quiera parar. Entender por qué ayuda a actuar.",
         "steps": [
-          "Explica el concepto de 'recompensa variable' con un ejemplo (máquina tragaperras).",
-          "Acordad un límite diario realista para apps de scroll (ej: 30-45 min).",
-          "Activa 'app_time_limit' en Reglas para esa app concreta.",
-          "Sustituid 10 min de scroll por 10 min de actividad ofreal cada día."
+          "Explícale que estas apps funcionan como una máquina tragaperras: nunca sabes qué viene después, y eso engancha.",
+          "Pactad juntos un tiempo máximo al día para esa app. 30-45 minutos es un buen punto de partida.",
+          "Crea en NSK una alerta para que te avise cuando lleve demasiado tiempo en esa app.",
+          "Cambiad 10 minutos de scroll por 10 minutos de algo real: salir, música, dibujar, lo que le guste."
         ],
-        "tip": "El problema no es la app, es el formato. Vídeo largo > scroll infinito."
+        "tip": "El problema no es la app, es el formato. Un vídeo largo entretiene igual y engancha mucho menos."
       },
       "compulsive": {
         "title": "Cuando el móvil no puede esperar",

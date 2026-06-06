@@ -310,15 +310,15 @@
         "tip": "Avoid 'you're on your phone all day'. Replace with 'what does this app give you?'."
       },
       "warning": {
-        "title": "Warning signs on social media",
-        "body": "Early patterns that may signal anxiety, toxic comparison or isolation.",
+        "title": "Signs that something's not right with the phone",
+        "body": "There are patterns that warn you before the problem gets big. Learn to recognise them.",
         "steps": [
-          "Watch for sudden mood changes right after phone use.",
-          "Monitor night use >30min and compulsive opens (>10 unlocks/hour).",
-          "Detect dependence on a single app (>70% of time).",
-          "Talk to your kid if 2+ signs appear within a week."
+          "Notice if they suddenly change mood right after using the phone.",
+          "Watch if they use the phone at night when they should be sleeping, or open it many times in a row.",
+          "Pay attention if they spend nearly all their time on one single app and get anxious when they can't use it.",
+          "If you see two or more of these signs in a week, it's time for a calm conversation."
         ],
-        "tip": "Set a 'session_burst' rule in Rules to detect it automatically."
+        "tip": "NSK detects these patterns automatically and alerts you. You don't have to watch alone."
       },
       "night": {
         "title": "Night digital hygiene",
@@ -343,15 +343,15 @@
         "tip": "Children's brains learn by reinforcement. Reward presence, not absence."
       },
       "dopamine": {
-        "title": "Dopamine, infinite scroll and attention",
-        "body": "Why TikTok, Reels and Shorts are so addictive for developing brains.",
+        "title": "Why they can't stop scrolling",
+        "body": "TikTok, Reels and Shorts are designed so the brain doesn't want to stop. Understanding why helps you act.",
         "steps": [
-          "Explain 'variable reward' with an example (slot machine).",
-          "Agree a realistic daily limit for scroll apps (e.g. 30-45 min).",
-          "Activate 'app_time_limit' in Rules for that specific app.",
-          "Replace 10 min of scrolling with 10 min of offline activity each day."
+          "Explain that these apps work like a slot machine: you never know what comes next, and that's what hooks you.",
+          "Agree a daily time limit for that app together. 30-45 minutes is a good starting point.",
+          "Set up an alert in NSK so you get notified when they've spent too long on that app.",
+          "Swap 10 minutes of scrolling for 10 minutes of something real: going out, music, drawing, whatever they enjoy."
         ],
-        "tip": "The problem is not the app, it's the format. Long video > infinite scroll."
+        "tip": "The problem isn't the app, it's the format. A long video entertains just as much and hooks far less."
       },
       "compulsive": {
         "title": "When the phone can't wait",
