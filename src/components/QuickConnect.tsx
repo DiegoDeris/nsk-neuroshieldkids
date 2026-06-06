@@ -101,11 +101,8 @@ export const QuickConnect = ({ child, onChange }: Props) => {
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
-  const [qrMode, setQrMode] = useState<"install" | "token">("install");
-  // install QR → opens /install page (first-time setup with APK download)
-  // token QR  → raw token (for already-installed app)
-  const installQrPayload = `${window.location.origin}/install?t=${encodeURIComponent(token)}&n=${encodeURIComponent(child.name)}`;
-  const qrPayload = qrMode === "install" ? installQrPayload : token;
+  // URL que abre el Monitor directamente al escanear
+  const monitorUrl = `${window.location.origin}/monitor?t=${encodeURIComponent(token)}&n=${encodeURIComponent(child.name)}`;
 
   if (guided) {
     return (
@@ -135,33 +132,17 @@ export const QuickConnect = ({ child, onChange }: Props) => {
       </div>
 
       <div className="grid md:grid-cols-[auto_1fr] gap-6 items-start">
-        {/* QR */}
+        {/* QR único */}
         <div className="flex flex-col items-center gap-2">
           <div className="bg-white p-4 rounded-2xl shadow-soft mx-auto">
-            <QRCodeSVG value={qrPayload} size={180} />
+            <QRCodeSVG value={monitorUrl} size={180} />
           </div>
           <div className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1">
-            {qrMode === "install"
-              ? <><Download className="h-3 w-3" /> Escanear para instalar la app</>
-              : <><QrCode className="h-3 w-3" /> Escanear desde dentro de la app</>
-            }
+            <QrCode className="h-3 w-3" /> Escanear con la cámara del menor
           </div>
-          <div className="flex gap-1">
-            <Button
-              size="sm" variant={qrMode === "install" ? "default" : "outline"}
-              className="h-7 text-xs px-3"
-              onClick={() => setQrMode("install")}
-            >
-              <Smartphone className="h-3 w-3 mr-1" /> Instalar
-            </Button>
-            <Button
-              size="sm" variant={qrMode === "token" ? "default" : "outline"}
-              className="h-7 text-xs px-3"
-              onClick={() => setQrMode("token")}
-            >
-              <QrCode className="h-3 w-3 mr-1" /> Configurar
-            </Button>
-          </div>
+          <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={rotate} title={t("quick.rotate")}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Regenerar QR
+          </Button>
         </div>
 
         {/* Steps */}
@@ -184,38 +165,8 @@ export const QuickConnect = ({ child, onChange }: Props) => {
                 {t("quick.listening")}
               </Button>
             )}
-            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
-            <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-              <Upload className="h-3 w-3 mr-1" /> {uploading ? t("common.loading") : t("quick.csv")}
-            </Button>
           </div>
         </div>
-      </div>
-
-      {/* Compact url+token row */}
-      <div className="mt-5 grid sm:grid-cols-2 gap-2">
-        <div className="flex gap-1">
-          <Input readOnly value={INGEST_URL} className="font-mono text-xs h-9" />
-          <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => copy(INGEST_URL, "url")}>
-            {copied === "url" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          </Button>
-        </div>
-        <div className="flex gap-1">
-          <Input readOnly value={token} className="font-mono text-xs h-9" />
-          <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => copy(token, "tok")}>
-            {copied === "tok" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          </Button>
-          <Button size="icon" variant="outline" className="h-9 w-9" onClick={rotate} title={t("quick.rotate")}>
-            <RefreshCw className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-4 flex justify-end">
-        <Button variant="link" size="sm" onClick={() => setGuided(true)}>
-          <Settings2 className="h-3 w-3 mr-1" /> {t("quick.guided")}
-        </Button>
       </div>
     </Card>
   );
