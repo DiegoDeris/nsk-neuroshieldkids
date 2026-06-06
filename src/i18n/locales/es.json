@@ -216,15 +216,23 @@
     "needHelpDesc": "Si los signos persisten o se agravan, no esperes. Llama al recurso de abajo: hablar con un experto puede cambiarlo todo.",
     "markRead": "Marcar leída",
     "adv": {
-      "night1": "Esta noche, deja el móvil cargando fuera del dormitorio.",
-      "night2": "Activa modo escala de grises desde las 21h durante 1 semana.",
-      "social1": "Pacta un límite diario realista (30-45 min) con tu hijo/a usando 'app_time_limit' en Reglas.",
-      "social2": "Sustituid 10 min de scroll por 10 min de actividad offline (paseo, deporte, dibujar).",
-      "burst1": "Configura una regla 'session_burst' para detectar uso compulsivo automáticamente.",
-      "forbidden1": "Habla sin castigar: pregunta qué buscaba en esa app antes de imponer una norma.",
-      "generic1": "Espera 1-2 horas y aborda el tema en un momento neutro, no caliente.",
-      "generic2": "Pregunta cómo se siente, no cuánto tiempo ha pasado en el móvil.",
-      "generic3": "Acordad juntos un pequeño cambio (1 norma, no 10) y revisad en 7 días."
+      "night1": "Esta noche, deja el móvil cargando fuera del dormitorio. Sin móvil cerca, el sueño mejora solo.",
+      "night2": "Activa el modo en blanco y negro del móvil desde las 21h. Es aburrido por diseño y ayuda a desconectar.",
+      "night3": "Pon el cargador en el salón o pasillo esta semana. Es un cambio de sitio, no una pelea.",
+      "night4": "Pregúntale cómo se siente al levantarse los días que ha dormido mal. Que conecte sueño con energía propia.",
+      "social1": "Pactad juntos un límite de tiempo diario realista para su app favorita. 30-45 minutos es un buen punto de partida.",
+      "social2": "Cambiad 10 minutos de pantalla por 10 minutos de algo físico: pasear, escuchar música, dibujar.",
+      "social3": "Ponle un aviso cuando queden 10 minutos de pantalla para que no sea una sorpresa cuando se acabe.",
+      "social4": "Trata el tiempo de móvil como algo que se gana con hábitos, no como algo que siempre está disponible.",
+      "burst1": "Cuando sienta el impulso de coger el móvil, propón que espere 5 minutos antes. Entrenar la pausa funciona.",
+      "burst2": "Pregúntale qué busca cuando lo abre tantas veces: si es aburrimiento, busca con él una alternativa concreta.",
+      "burst3": "Activad juntos una regla en NSK para recibir una alerta automática cuando pase esto. Así los datos hablan solos.",
+      "forbidden1": "Antes de imponer una norma, pregúntale qué buscaba en esa app. Entender el porqué cambia la conversación.",
+      "generic1": "Espera 1-2 horas antes de hablar. El momento de tensión nunca es el mejor para llegar a acuerdos.",
+      "generic2": "Pregúntale cómo se siente, no cuánto tiempo ha pasado en el móvil. La emoción abre más que el dato.",
+      "generic3": "Acordad juntos un cambio pequeño esta semana. Una norma cumplida vale más que diez rotas.",
+      "generic4": "Dile cuando lo hace bien. Un 'hoy lo has hecho genial' tiene más efecto que cualquier castigo.",
+      "generic5": "Sé constante más que estricto. Una norma simple que se aplica siempre da más resultado que muchas que se olvidan."
     },
     "talk": {
       "preventive": "He visto algo en los datos y quería preguntarte cómo te has sentido hoy con el móvil. Sin enfado, solo curiosidad.",
@@ -345,27 +353,27 @@
         ],
         "tip": "El problema no es la app, es el formato. Vídeo largo > scroll infinito."
       },
-      "cyber": {
-        "title": "Ciberacoso: detectar y actuar",
-        "body": "El acoso digital deja huella emocional invisible. Saber actuar es esencial.",
+      "compulsive": {
+        "title": "Cuando el móvil no puede esperar",
+        "body": "Si tu hijo lo coge muchas veces seguidas en poco tiempo, puede ser que el móvil mande más que él. Aquí tienes cómo verlo y actuar.",
         "steps": [
-          "Crea un canal de comunicación confidencial: 'puedes contármelo sin castigo'.",
-          "Si hay sospecha, NO borres mensajes: haz capturas con fecha visible.",
-          "Reporta el contenido en la propia plataforma (todas tienen botón).",
-          "Si es grave o reiterado, contacta INCIBE 017 (España) o autoridad equivalente."
+          "Fíjate si lo primero que hace al levantarse es mirar el móvil, antes incluso de hablar.",
+          "Observa si se pone nervioso o de mal humor cuando no lo tiene cerca o se lo quedas.",
+          "NSK detecta automáticamente si lo abre más de 5 veces en 10 minutos y te avisa.",
+          "Acordad una norma simple juntos: el móvil se deja en un sitio fijo entre las comidas y por la noche."
         ],
-        "tip": "El silencio del menor no es indiferencia, es miedo. Pregunta sin presionar."
+        "tip": "Mostrarle los datos juntos, sin enfado, suele abrir mejor la conversación que cualquier regañina."
       },
-      "selfimage": {
-        "title": "Autoimagen y filtros: protegerla",
-        "body": "Los filtros y comparación constante erosionan la autoestima en adolescentes.",
+      "limits_broken": {
+        "title": "Qué hacer cuando supera el tiempo de pantalla",
+        "body": "Que supere el límite no significa que hayas fallado. Significa que hay que hablar, no castigar.",
         "steps": [
-          "Hablad sobre cómo se editan las fotos de influencers (mostrad ejemplos antes/después).",
-          "Seguid juntos cuentas que muestren cuerpos y vidas reales.",
-          "Evita comentar el aspecto físico de tu hijo a diario; valora otras cosas.",
-          "Si veis señales (dietas, evitar fotos, ansiedad), buscad ayuda profesional."
+          "No actúes en el momento: espera a que haya calma antes de hablar.",
+          "Muéstrale los datos en NSK: 'hoy llevas X horas, acordamos Y'. Los datos son neutros, no acusan.",
+          "Pregúntale qué estaba haciendo y cómo se siente cuando tiene que dejarlo.",
+          "Acordad juntos qué pasa mañana. Una norma pequeña que él ha pactado vale más que una grande impuesta."
         ],
-        "tip": "Estudios muestran que reducir 1h/día de redes mejora autoestima en 3 semanas."
+        "tip": "Los niños respetan mejor los límites que han ayudado a poner que los que les llegan de golpe."
       },
       "boundaries": {
         "title": "Poner límites sin batallas",
@@ -426,12 +434,16 @@
     "added": "Reto añadido",
     "markDay": "Sumar día",
     "presets": {
-      "screen_break": { "title": "Pausa de pantalla cada hora", "desc": "Levantarse 5 min cada 60 min de uso." },
-      "no_phone_dinner": { "title": "Cenar sin móvil", "desc": "Móviles fuera de la mesa durante la cena familiar." },
-      "sleep_no_phone": { "title": "Dormir sin móvil en el cuarto", "desc": "Cargar el móvil fuera del dormitorio." },
-      "outdoor": { "title": "30 min al aire libre", "desc": "Tiempo offline en exterior cada día." },
-      "homework_first": { "title": "Deberes antes que pantalla", "desc": "Pantalla solo después de tareas." },
-      "social_pause": { "title": "Día sin redes sociales", "desc": "Un día completo sin TikTok/Instagram/Snapchat." }
+      "screen_break": { "title": "Pausa de pantalla cada hora", "desc": "Levantarse 5 minutos y moverse cada hora de uso. El cuerpo y la mente lo agradecen." },
+      "no_phone_dinner": { "title": "Cenar sin móvil", "desc": "Todos los móviles fuera de la mesa durante la cena. Se habla más y mejor." },
+      "sleep_no_phone": { "title": "Dormir sin móvil en el cuarto", "desc": "El móvil se carga fuera del dormitorio. El sueño mejora desde la primera noche." },
+      "outdoor": { "title": "30 minutos al aire libre", "desc": "Cada día, 30 minutos sin pantalla y al exterior. Paseo, deporte, lo que sea." },
+      "homework_first": { "title": "Deberes antes que pantalla", "desc": "Primero las tareas, después el móvil. Sin excepciones esta semana." },
+      "social_pause": { "title": "Un día sin redes sociales", "desc": "Un día entero sin abrir TikTok, Instagram ni Snapchat. Solo un día." },
+      "no_night_screen": { "title": "Sin pantalla después de las 22h", "desc": "El móvil se apaga o queda cargando fuera del cuarto antes de las 22h. Sin negociación." },
+      "slow_morning": { "title": "Sin móvil hasta terminar el desayuno", "desc": "La primera hora del día sin mirar el móvil. Empieza el día con calma, no con notificaciones." },
+      "max_screen_day": { "title": "Máximo 90 minutos de pantalla hoy", "desc": "Un día entero con menos de hora y media de móvil en total. Un reto de un solo día." },
+      "pause_before_pick": { "title": "Esperar 5 minutos antes de coger el móvil", "desc": "Cada vez que sienta el impulso, esperar 5 minutos antes de cogerlo. Entrena la pausa." }
     }
   },
   "wizard": {

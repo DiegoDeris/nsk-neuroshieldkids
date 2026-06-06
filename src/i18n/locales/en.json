@@ -216,15 +216,23 @@
     "needHelpDesc": "If signs persist or worsen, don't wait. Call the resource below — talking to an expert can change everything.",
     "markRead": "Mark read",
     "adv": {
-      "night1": "Tonight, charge the phone OUTSIDE the bedroom.",
-      "night2": "Turn on grayscale mode from 9pm for one week.",
-      "social1": "Agree a realistic daily limit (30-45 min) using 'app_time_limit' in Rules.",
-      "social2": "Swap 10 min of scrolling for 10 min of offline activity (walk, sport, drawing).",
-      "burst1": "Configure a 'session_burst' rule to detect compulsive use automatically.",
-      "forbidden1": "Talk without punishing: ask what they were looking for in that app before setting a rule.",
-      "generic1": "Wait 1-2 hours and bring it up in a neutral moment, not heated.",
-      "generic2": "Ask how they feel, not how long they've been on the phone.",
-      "generic3": "Agree together on one small change (1 rule, not 10) and review in 7 days."
+      "night1": "Tonight, charge the phone outside the bedroom. Without it nearby, sleep improves on its own.",
+      "night2": "Turn on grayscale from 9pm. It's boring by design — and that's exactly the point.",
+      "night3": "Put the charger in the hallway or living room this week. It's a change of location, not a fight.",
+      "night4": "Ask how they feel on mornings after bad sleep. Help them connect rest with their own energy and mood.",
+      "social1": "Agree a realistic daily limit for their favourite app together. 30-45 minutes is a good starting point.",
+      "social2": "Swap 10 minutes of screen time for 10 minutes of something physical: a walk, music, drawing.",
+      "social3": "Give them a 10-minute warning before screen time ends. No surprises means fewer battles.",
+      "social4": "Treat phone time as something earned, not something always available by default.",
+      "burst1": "When they feel the urge to pick up the phone, suggest waiting 5 minutes first. Training the pause works.",
+      "burst2": "Ask what they're looking for when they open it so many times. If it's boredom, find a concrete alternative together.",
+      "burst3": "Set up a rule in NSK to get an automatic alert when this happens. The data speaks for itself.",
+      "forbidden1": "Before setting a rule, ask what they were looking for in that app. Understanding the why changes the conversation.",
+      "generic1": "Wait 1-2 hours before talking. The moment of tension is never the best time to reach agreements.",
+      "generic2": "Ask how they feel, not how long they've been on the phone. Emotions open more doors than data.",
+      "generic3": "Agree on one small change this week. One rule kept is worth more than ten broken.",
+      "generic4": "Tell them when they do well. A 'you nailed it today' has more impact than any punishment.",
+      "generic5": "Be consistent rather than strict. One simple rule applied always beats many rules that get forgotten."
     },
     "talk": {
       "preventive": "I noticed something in the data and wanted to ask how you felt today with the phone. No anger, just curious.",
@@ -345,27 +353,27 @@
         ],
         "tip": "The problem is not the app, it's the format. Long video > infinite scroll."
       },
-      "cyber": {
-        "title": "Cyberbullying: detect and act",
-        "body": "Digital harassment leaves invisible emotional marks. Knowing how to act is essential.",
+      "compulsive": {
+        "title": "When the phone can't wait",
+        "body": "If your kid picks it up many times in a short while, the phone may be in charge — not them. Here's how to spot it and act.",
         "steps": [
-          "Create a confidential channel: 'you can tell me without punishment'.",
-          "If suspected, do NOT delete messages: take screenshots with visible date.",
-          "Report content on the platform itself (all have a button).",
-          "If serious or repeated, contact local authorities or helpline."
+          "Notice if the first thing they do when waking up is check the phone, before even speaking.",
+          "Watch if they get anxious or moody when the phone isn't nearby or you take it.",
+          "NSK automatically detects if they open it more than 5 times in 10 minutes and alerts you.",
+          "Agree a simple rule together: the phone stays in a fixed spot between meals and at night."
         ],
-        "tip": "A kid's silence is not indifference, it's fear. Ask without pressure."
+        "tip": "Showing them the data together, calmly, usually opens a better conversation than any telling-off."
       },
-      "selfimage": {
-        "title": "Self-image and filters: protect it",
-        "body": "Filters and constant comparison erode self-esteem in teens.",
+      "limits_broken": {
+        "title": "What to do when they exceed screen time",
+        "body": "Exceeding the limit doesn't mean you've failed. It means it's time to talk, not punish.",
         "steps": [
-          "Talk about how influencer photos are edited (show before/after).",
-          "Follow accounts together that show real bodies and lives.",
-          "Avoid commenting on your kid's appearance daily; value other things.",
-          "If you see signs (diets, avoiding photos, anxiety), seek professional help."
+          "Don't act in the moment: wait for calm before talking.",
+          "Show them the data in NSK: 'today you've had X hours, we agreed Y'. Data is neutral — it doesn't accuse.",
+          "Ask what they were doing and how they feel when they have to stop.",
+          "Agree together what happens tomorrow. A small rule they helped make is worth more than a big one imposed."
         ],
-        "tip": "Studies show reducing 1h/day of social media improves self-esteem in 3 weeks."
+        "tip": "Kids respect limits they helped set far more than ones that arrive without warning."
       },
       "boundaries": {
         "title": "Setting limits without battles",
@@ -426,12 +434,16 @@
     "added": "Quest added",
     "markDay": "Add day",
     "presets": {
-      "screen_break": { "title": "Screen break every hour", "desc": "Stand up 5 min after every 60 min of use." },
-      "no_phone_dinner": { "title": "Phone-free dinner", "desc": "Phones off the table during family dinner." },
-      "sleep_no_phone": { "title": "Sleep without phone in room", "desc": "Charge the phone outside the bedroom." },
-      "outdoor": { "title": "30 min outdoors", "desc": "Offline outdoor time every day." },
-      "homework_first": { "title": "Homework before screen", "desc": "Screen only after schoolwork." },
-      "social_pause": { "title": "Day without social media", "desc": "Full day without TikTok/Instagram/Snapchat." }
+      "screen_break": { "title": "Screen break every hour", "desc": "Stand up and move for 5 minutes after every hour of use. Body and mind both benefit." },
+      "no_phone_dinner": { "title": "Phone-free dinner", "desc": "All phones off the table during family dinner. More conversation, better connection." },
+      "sleep_no_phone": { "title": "Sleep without phone in room", "desc": "Charge the phone outside the bedroom. Sleep improves from the very first night." },
+      "outdoor": { "title": "30 minutes outdoors", "desc": "Every day, 30 minutes without a screen and outside. Walk, sport, anything." },
+      "homework_first": { "title": "Homework before screen", "desc": "Tasks first, phone after. No exceptions this week." },
+      "social_pause": { "title": "One day without social media", "desc": "A full day without opening TikTok, Instagram or Snapchat. Just one day." },
+      "no_night_screen": { "title": "No screen after 10pm", "desc": "Phone off or charging outside the room before 10pm. No negotiation." },
+      "slow_morning": { "title": "No phone until after breakfast", "desc": "The first hour of the day without the phone. Start the day calmly, not with notifications." },
+      "max_screen_day": { "title": "Max 90 minutes of screen today", "desc": "A full day with less than an hour and a half of phone time in total. A one-day challenge." },
+      "pause_before_pick": { "title": "Wait 5 minutes before picking it up", "desc": "Every time they feel the urge, wait 5 minutes before picking up the phone. Train the pause." }
     }
   },
   "wizard": {
