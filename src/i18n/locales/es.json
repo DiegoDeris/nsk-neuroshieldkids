@@ -64,7 +64,7 @@
     "alerts":     { "title": "Alteración del sueño",        "text": "Identifica uso nocturno (22h–7h) que indica insomnio digital, agitación o conductas de evitación." },
     "trends":     { "title": "Sesiones compulsivas",        "text": "Registra cuántas veces se abre el móvil en poco tiempo — señal temprana de uso ansioso o escapismo digital." },
     "recs":       { "title": "Estrés conductual",           "text": "Detecta cambios bruscos en los patrones habituales: indicador de estrés emocional, conflictos o crisis." },
-    "game":       { "title": "Aislamiento digital",         "text": "Identifica uso prolongado y solitario que puede correlacionar con retraimiento social o depresión." },
+    "game":       { "title": "Aislamiento digital",         "text": "Identifica uso prolongado y solitario: sesiones extensas sin interrupciones, ausencia de pausas activas y patrones de uso que desplazan otras actividades." },
     "learn":      { "title": "Recomendaciones accionables", "text": "Pasos concretos para hoy: qué decirle, qué cambiar, qué regla activar. Generados por IA para cada hijo." },
     "privacy":    { "title": "Sin spyware — GDPR",          "text": "Solo metadatos de uso: tiempo, sesiones, horario, comportamiento. Nunca mensajes, fotos ni contenido privado." }
   },
