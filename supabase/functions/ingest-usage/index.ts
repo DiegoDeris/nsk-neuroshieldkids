@@ -181,8 +181,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Buscar hijo por token
     const kids = (await sbGet(
       "children",
-      `select=id,parent_id&ingest_token=eq.${encodeURIComponent(token)}&limit=1`,
-    )) as Array<{ id: string; parent_id: string }>;
+      `select=id,parent_id,name&ingest_token=eq.${encodeURIComponent(token)}&limit=1`,
+    )) as Array<{ id: string; parent_id: string; name: string }>;
 
     if (!Array.isArray(kids) || kids.length === 0) {
       return json({ error: "token inválido" }, 401);
@@ -274,7 +274,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       rows.map(r => ({ app_name: r.app_name, occurred_at: r.occurred_at })),
     );
 
-    return json({ ok: true, child_id: child.id, ingested: rows.length });
+    return json({ ok: true, child_id: child.id, child_name: child.name, ingested: rows.length });
   } catch (e) {
     console.error("ingest-usage crash:", e);
     return json({ error: String(e) }, 500);

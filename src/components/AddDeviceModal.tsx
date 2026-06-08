@@ -75,7 +75,7 @@ export function AddDeviceModal({ childId, childName, childAvatar, ingestToken: i
   }, [open, phase, childId]);
 
   const monitorUrl = token
-    ? `${window.location.origin}/monitor?t=${encodeURIComponent(token)}&n=${encodeURIComponent(childName)}`
+    ? `${window.location.origin}/monitor?t=${encodeURIComponent(token)}`
     : "";
 
   return (

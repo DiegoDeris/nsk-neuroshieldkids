@@ -28,7 +28,7 @@ export default function Install() {
   const hasToken = token.length >= 16;
 
   const monitorUrl = hasToken
-    ? `${window.location.origin}/monitor?t=${token}&n=${encodeURIComponent(childName)}`
+    ? `${window.location.origin}/monitor?t=${token}`
     : "";
 
   return (

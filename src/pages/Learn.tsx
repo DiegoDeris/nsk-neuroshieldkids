@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,17 +38,28 @@ const CATEGORIES = ["all", "communication", "sleep", "risks", "wellbeing", "emot
 
 const Learn = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [filter, setFilter] = useState<typeof CATEGORIES[number]>("all");
   const [open, setOpen] = useState<string | null>(null);
-  const [done, setDone] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem("nsk_lessons_done") ?? "[]")); } catch { return new Set(); }
-  });
+  const [done, setDone] = useState<Set<string>>(new Set());
 
-  const toggleDone = (key: string) => {
+  // Cargar progreso desde Supabase al montar
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("lessons_done").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (data?.lessons_done && Array.isArray(data.lessons_done)) {
+        setDone(new Set(data.lessons_done as string[]));
+      }
+    });
+  }, [user]);
+
+  const toggleDone = async (key: string) => {
     const next = new Set(done);
     next.has(key) ? next.delete(key) : next.add(key);
     setDone(next);
-    localStorage.setItem("nsk_lessons_done", JSON.stringify([...next]));
+    if (user) {
+      await supabase.from("profiles").update({ lessons_done: [...next] }).eq("id", user.id);
+    }
   };
 
   const filtered = filter === "all" ? LESSONS : LESSONS.filter(l => l.category === filter);

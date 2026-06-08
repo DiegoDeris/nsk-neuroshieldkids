@@ -13,6 +13,9 @@ import { computeEmotionalScore, computeScoreWithHistory, riskLabel, hoursAgo } f
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { Brain, FileDown, Sparkles, ArrowLeft, Trophy, AlertTriangle, TrendingUp, Phone, MessageSquare, Target, Clock, Moon, Activity, Smartphone, CheckCircle2, ChevronDown } from "lucide-react";
 import { QuickConnect } from "@/components/QuickConnect";
+import { useSubscription } from "@/hooks/use-subscription";
+import { Lock } from "lucide-react";
+import { Link as RouterLink } from "react-router-dom";
 
 const DIM_LABELS: Record<string, string> = {
   sleep_disruption: "Sueño",
@@ -41,6 +44,7 @@ const _v = "20260603-v4"; // cache bust
 const ChildDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { limits, plan } = useSubscription();
   const [child, setChild] = useState<any>(null);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [scores, setScores] = useState<any[]>([]);
@@ -62,7 +66,7 @@ const ChildDetail = () => {
     try {
     const [{ data: c }, { data: m }, { data: s }, { data: r }, { data: g }] = await Promise.all([
       supabase.from("children").select("*").eq("id", id).maybeSingle(),
-      supabase.from("usage_metrics").select("*").eq("child_id", id).order("metric_date", { ascending: false }).limit(30),
+      supabase.from("usage_metrics").select("*").eq("child_id", id).order("metric_date", { ascending: false }).limit(limits.historyDays === Infinity ? 365 : limits.historyDays),
       supabase.from("emotional_scores").select("*").eq("child_id", id).order("created_at", { ascending: false }).limit(14),
       supabase.from("recommendations").select("*").eq("child_id", id).order("created_at", { ascending: false }).limit(10),
       supabase.from("gamification").select("*").eq("child_id", id).maybeSingle(),
@@ -310,16 +314,33 @@ const ChildDetail = () => {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={analyze} disabled={analyzing} size="lg" className="shadow-glow rounded-full">
-              <Sparkles className="h-4 w-4 mr-2" /> {analyzing ? "Analizando…" : "Análisis profundo"}
+            <Button onClick={analyze} disabled={analyzing || !limits.aiAnalysis} size="lg" className="shadow-glow rounded-full"
+              title={!limits.aiAnalysis ? "Requiere plan Premium" : undefined}>
+              {!limits.aiAnalysis ? <Lock className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+              {analyzing ? "Analizando…" : "Análisis profundo"}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => predict()} disabled={predicting}>
-              <TrendingUp className="h-4 w-4 mr-2" /> {predicting ? "Prediciendo…" : "Predecir"}
+            <Button variant="ghost" size="sm" onClick={() => predict()} disabled={predicting || !limits.aiAnalysis}
+              title={!limits.aiAnalysis ? "Requiere plan Premium" : undefined}>
+              {!limits.aiAnalysis ? <Lock className="h-4 w-4 mr-2" /> : <TrendingUp className="h-4 w-4 mr-2" />}
+              {predicting ? "Prediciendo…" : "Predecir"}
             </Button>
-            <Button variant="ghost" size="sm" onClick={coach} disabled={coaching}>
-              <Target className="h-4 w-4 mr-2" /> {coaching ? "Generando…" : "Plan semanal"}
+            <Button variant="ghost" size="sm" onClick={coach} disabled={coaching || !limits.aiAnalysis}
+              title={!limits.aiAnalysis ? "Requiere plan Premium" : undefined}>
+              {!limits.aiAnalysis ? <Lock className="h-4 w-4 mr-2" /> : <Target className="h-4 w-4 mr-2" />}
+              {coaching ? "Generando…" : "Plan semanal"}
             </Button>
-            <Button variant="ghost" size="sm" onClick={downloadReport}><FileDown className="h-4 w-4 mr-2" /> Reporte</Button>
+            <Button variant="ghost" size="sm" onClick={downloadReport} disabled={!limits.pdfReports}
+              title={!limits.pdfReports ? "Requiere plan Premium" : undefined}>
+              {!limits.pdfReports ? <Lock className="h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />}
+              Reporte
+            </Button>
+            {!limits.aiAnalysis && (
+              <RouterLink to="/pricing">
+                <Button size="sm" variant="outline" className="border-primary text-primary">
+                  <Sparkles className="h-3 w-3 mr-1" /> Actualizar a Premium
+                </Button>
+              </RouterLink>
+            )}
           </div>
         </div>
 

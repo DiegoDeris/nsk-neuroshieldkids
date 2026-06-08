@@ -102,7 +102,7 @@ export const QuickConnect = ({ child, onChange }: Props) => {
   };
 
   // URL que abre el Monitor directamente al escanear
-  const monitorUrl = `${window.location.origin}/monitor?t=${encodeURIComponent(token)}&n=${encodeURIComponent(child.name)}`;
+  const monitorUrl = `${window.location.origin}/monitor?t=${encodeURIComponent(token)}`;
 
   if (guided) {
     return (

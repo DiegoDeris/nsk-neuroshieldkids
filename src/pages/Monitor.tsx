@@ -96,7 +96,7 @@ async function registerSW() {
 export default function Monitor() {
   const [params] = useSearchParams();
   const token = params.get("t") ?? "";
-  const childName = params.get("n") ?? "tu hijo/a";
+  const [childName, setChildName] = useState(params.get("n") ?? "tu hijo/a");
 
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
@@ -259,6 +259,10 @@ export default function Monitor() {
         setStatus("ok");
         setLastError(null);
         setLastSync(new Date());
+        try {
+          const json = await res.json();
+          if (json.child_name) setChildName(json.child_name);
+        } catch { /* no critical */ }
       } else {
         let errMsg = `HTTP ${res.status}`;
         try { const j = await res.json(); errMsg += `: ${j.error ?? JSON.stringify(j)}`; } catch {}
