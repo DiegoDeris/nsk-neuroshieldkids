@@ -96,8 +96,15 @@ const Quests = () => {
       if (q.category === "sleep" && !badges.includes("🌙 Buen dormir")) badges.push("🌙 Buen dormir");
       if (q.category === "family" && !badges.includes("👨‍👩‍👧 Familia presente")) badges.push("👨‍👩‍👧 Familia presente");
       if (newPoints >= 500 && !badges.includes("🏆 Leyenda digital")) badges.push("🏆 Leyenda digital");
+      const today = new Date().toISOString().slice(0, 10);
+      const newStreak = game.last_healthy_date === today
+        ? game.streak_days ?? 0
+        : game.last_healthy_date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+          ? (game.streak_days ?? 0) + 1
+          : 1;
       await supabase.from("gamification").upsert([{
         parent_id: user!.id, child_id: selected, points: newPoints, badges, level: newLevel,
+        streak_days: newStreak, last_healthy_date: today,
       }], { onConflict: "child_id" });
       toast.success(`🎉 +${q.points} pts`);
     }

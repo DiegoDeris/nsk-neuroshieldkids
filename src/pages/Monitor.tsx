@@ -4,7 +4,7 @@
 // Con Service Worker + Periodic Background Sync funciona aunque esté en background.
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Shield, Wifi, WifiOff, Download } from "lucide-react";
+import { Shield, Wifi, WifiOff } from "lucide-react";
 
 const INGEST_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co/functions/v1/ingest-usage";
 const INTERVAL_MS = 60 * 1000; // 1 minuto mientras está en primer plano
@@ -249,9 +249,10 @@ export default function Monitor() {
 
     setStatus("sending");
     try {
+      // text/plain evita el CORS preflight (simple request) — el servidor parsea el JSON igual
       const res = await fetch(INGEST_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ token, events: [event] }),
       });
       if (res.ok) {
@@ -351,30 +352,13 @@ export default function Monitor() {
         </div>
       </div>
 
-      {/* Botón instalar PWA — solo si no instalada y hay prompt disponible */}
-      {!isInstalled && installPrompt && (
-        <button
-          onClick={handleInstall}
-          className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-md mb-4 active:scale-95 transition-transform"
-        >
-          <Download className="h-4 w-4" />
-          Añadir al inicio para monitoreo continuo
-        </button>
-      )}
-
-      {/* Instrucción iOS (Safari no lanza beforeinstallprompt) */}
-      {!isInstalled && !installPrompt && (
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 w-full max-w-xs mb-4 text-left">
-          <p className="text-xs font-semibold text-blue-700 mb-1">Para monitoreo en segundo plano:</p>
-          <p className="text-xs text-blue-600 leading-relaxed">
-            Pulsa <strong>Compartir</strong> → <strong>Añadir a pantalla de inicio</strong> y luego abre la app desde el icono.
-          </p>
-        </div>
-      )}
-
-      {isInstalled && (
+      {isInstalled ? (
         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-3 w-full max-w-xs mb-4">
           <p className="text-xs font-semibold text-emerald-700">✓ App instalada — monitoreo activo en segundo plano</p>
+        </div>
+      ) : (
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 w-full max-w-xs mb-4">
+          <p className="text-xs font-semibold text-amber-700">⚠ Añade esta página a la pantalla de inicio para activar el monitoreo en segundo plano</p>
         </div>
       )}
 

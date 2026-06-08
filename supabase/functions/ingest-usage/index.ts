@@ -1,236 +1,282 @@
-// Endpoint público de ingesta event-driven. Auth = ingest_token del hijo (no JWT).
-// POST /ingest-usage  body: { token, events:[{app_name,duration_seconds,occurred_at?,event_type?,metadata?}] }
-// Tras insertar: agrega métricas del día en background y EVALÚA REGLAS en tiempo casi real → genera alertas.
-import { createClient } from "npm:@supabase/supabase-js@2";
-
-const corsHeaders = {
+// ingest-usage v3 — evalúa reglas, aplica freemium, evita double-counting
+// POST body: { token: string, events: [{app_name, duration_seconds, occurred_at?, event_type?, metadata?}] }
+const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-interface IncomingEvent {
-  app_name?: string;
-  duration_seconds?: number;
-  occurred_at?: string;
-  event_type?: string;
-  metadata?: Record<string, unknown>;
+const SB_URL = Deno.env.get("SUPABASE_URL")!;
+const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+function sbHeaders(): Record<string, string> {
+  return {
+    "apikey": SB_KEY,
+    "Authorization": `Bearer ${SB_KEY}`,
+    "Content-Type": "application/json",
+    "Prefer": "return=minimal",
+  };
 }
 
-interface Rule {
-  id: string;
-  parent_id: string;
-  child_id: string | null;
-  name: string;
-  rule_type: string;
-  config: any;
-  severity: "preventive" | "moderate" | "critical";
-  enabled: boolean;
-  cooldown_minutes: number;
-  last_triggered_at: string | null;
+async function sbGet(table: string, qs: string): Promise<unknown> {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${qs}`, { headers: sbHeaders() });
+  return r.json();
 }
 
-/**
- * Normaliza event_type al conjunto permitido por el CHECK constraint de la BD.
- * Garantiza que ningún insert viole la constraint independientemente del cliente.
- */
-function normalizeEventType(raw: string): string {
-  const t = String(raw).toLowerCase().trim();
-  // Tipos nativos de BD
-  if (["app_usage", "session_start", "session_end", "screen_on", "screen_off"].includes(t)) return t;
-  // Aliases comunes → mapeados a tipos BD
-  if (t === "app_open")    return "session_start";  // app_open cuenta como inicio de sesión
-  if (t === "usage")       return "app_usage";
-  if (t === "web_visit")   return "app_usage";
-  return "app_usage"; // fallback seguro
+async function sbPatch(table: string, qs: string, data: unknown): Promise<void> {
+  await fetch(`${SB_URL}/rest/v1/${table}?${qs}`, {
+    method: "PATCH",
+    headers: sbHeaders(),
+    body: JSON.stringify(data),
+  });
 }
 
-async function evaluateRules(admin: any, childId: string, parentId: string, newEvents: any[]) {
-  const { data: rules } = await admin
-    .from("rules")
-    .select("*")
-    .eq("enabled", true)
-    .eq("parent_id", parentId)
-    .or(`child_id.eq.${childId},child_id.is.null`);
+async function sbInsert(table: string, rows: unknown[]): Promise<{ status: number; text: string }> {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method: "POST",
+    headers: sbHeaders(),
+    body: JSON.stringify(rows),
+  });
+  const text = await r.text();
+  return { status: r.status, text };
+}
 
-  if (!rules || rules.length === 0) return [];
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+}
 
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const triggered: { rule: Rule; title: string; message: string }[] = [];
+// ── Evaluación de reglas ──────────────────────────────────────────────────────
 
-  // Una sola query para todos los eventos de hoy (evita N+1)
-  const { data: dayEvents } = await admin
-    .from("usage_events")
-    .select("app_name,duration_seconds,occurred_at,event_type")
-    .eq("child_id", childId)
-    .gte("occurred_at", `${today}T00:00:00Z`)
-    .lte("occurred_at", `${today}T23:59:59Z`);
+async function evaluateRules(
+  childId: string,
+  parentId: string,
+  metric: { total_minutes: number; night_minutes: number; sessions: number; dominant_app: string | null },
+  events: Array<{ app_name: string | null; occurred_at: string }>,
+) {
+  const rules = (await sbGet(
+    "rules",
+    `select=id,rule_type,config,severity,cooldown_minutes,last_triggered_at&parent_id=eq.${parentId}&enabled=eq.true&or=(child_id.eq.${childId},child_id.is.null)`,
+  )) as Array<{
+    id: string;
+    rule_type: string;
+    config: Record<string, unknown>;
+    severity: string;
+    cooldown_minutes: number;
+    last_triggered_at: string | null;
+  }>;
 
-  const events = dayEvents ?? [];
-  const totalSec = events.reduce((a: number, e: any) => a + (e.duration_seconds || 0), 0);
-  const perApp: Record<string, number> = {};
-  for (const e of events) {
-    if (!e.app_name) continue;
-    perApp[e.app_name.toLowerCase()] = (perApp[e.app_name.toLowerCase()] || 0) + (e.duration_seconds || 0);
-  }
+  if (!Array.isArray(rules) || rules.length === 0) return;
 
-  for (const r of rules as Rule[]) {
-    // cooldown
-    if (r.last_triggered_at) {
-      const elapsed = (now.getTime() - new Date(r.last_triggered_at).getTime()) / 60000;
-      if (elapsed < r.cooldown_minutes) continue;
+  const now = Date.now();
+  const alertsToInsert: Array<{ child_id: string; parent_id: string; severity: string; title: string; message: string }> = [];
+
+  for (const rule of rules) {
+    // Comprobar cooldown
+    if (rule.last_triggered_at) {
+      const elapsed = (now - new Date(rule.last_triggered_at).getTime()) / 60000;
+      if (elapsed < rule.cooldown_minutes) continue;
     }
 
-    let hit: { title: string; message: string } | null = null;
+    const cfg = rule.config ?? {};
+    let triggered = false;
+    let title = "";
+    let message = "";
 
-    switch (r.rule_type) {
-      case "forbidden_app": {
-        const apps: string[] = (r.config?.apps ?? []).map((a: string) => a.toLowerCase());
-        const found = newEvents.find(e => e.app_name && apps.includes(String(e.app_name).toLowerCase()));
-        if (found) hit = {
-          title: `🚫 App prohibida detectada: ${found.app_name}`,
-          message: `${r.name} — Se ha detectado uso de "${found.app_name}".`,
-        };
+    switch (rule.rule_type) {
+      case "daily_time_limit": {
+        const limit = Number(cfg.minutes ?? 120);
+        if (metric.total_minutes >= limit) {
+          triggered = true;
+          title = "Límite diario de pantalla alcanzado";
+          message = `Lleva ${metric.total_minutes} min de pantalla hoy (límite: ${limit} min).`;
+        }
         break;
       }
-      case "daily_time_limit": {
-        const limitMin = Number(r.config?.minutes ?? 120);
-        const usedMin = Math.round(totalSec / 60);
-        if (usedMin >= limitMin) hit = {
-          title: `⏱️ Límite diario superado (${usedMin}/${limitMin} min)`,
-          message: `${r.name} — Tiempo total hoy: ${usedMin} min. Límite: ${limitMin} min.`,
-        };
+      case "forbidden_app": {
+        const apps = (cfg.apps as string[] ?? []).map((a: string) => a.toLowerCase().trim());
+        const hit = events.find(e => e.app_name && apps.some(a => e.app_name!.toLowerCase().includes(a)));
+        if (hit) {
+          triggered = true;
+          title = `App prohibida detectada: ${hit.app_name}`;
+          message = `Se detectó uso de "${hit.app_name}", que está en la lista de apps prohibidas.`;
+        }
         break;
       }
       case "app_time_limit": {
-        const app = String(r.config?.app ?? "").toLowerCase();
-        const limitMin = Number(r.config?.minutes ?? 60);
-        const usedMin = Math.round((perApp[app] || 0) / 60);
-        if (app && usedMin >= limitMin) hit = {
-          title: `⏱️ Límite de ${r.config.app} superado (${usedMin}/${limitMin} min)`,
-          message: `${r.name} — ${r.config.app}: ${usedMin} min hoy.`,
-        };
+        const appName = String(cfg.app ?? "").toLowerCase();
+        const limit = Number(cfg.minutes ?? 60);
+        const appMinutes = events
+          .filter(e => e.app_name && e.app_name.toLowerCase().includes(appName))
+          .length; // aproximación: 1 evento ≈ 1 min
+        if (appMinutes >= limit) {
+          triggered = true;
+          title = `Límite de ${cfg.app} alcanzado`;
+          message = `Se han registrado más de ${limit} min en ${cfg.app} hoy.`;
+        }
         break;
       }
       case "restricted_hours": {
-        const startH = Number(r.config?.start_hour ?? 22);
-        const endH = Number(r.config?.end_hour ?? 7);
-        const usedInRestricted = newEvents.find(e => {
+        const startH = Number(cfg.start_hour ?? 22);
+        const endH = Number(cfg.end_hour ?? 7);
+        const nightEvent = events.find(e => {
           const h = new Date(e.occurred_at).getHours();
-          return startH <= endH ? (h >= startH && h < endH) : (h >= startH || h < endH);
+          return startH > endH
+            ? h >= startH || h < endH
+            : h >= startH && h < endH;
         });
-        if (usedInRestricted) hit = {
-          title: `🌙 Uso en horario restringido (${startH}h–${endH}h)`,
-          message: `${r.name} — Actividad detectada a las ${new Date(usedInRestricted.occurred_at).toLocaleTimeString("es")}.`,
-        };
+        if (nightEvent) {
+          triggered = true;
+          title = "Uso en horario restringido";
+          message = `Se detectó actividad a las ${new Date(nightEvent.occurred_at).toLocaleTimeString("es")} (horario restringido: ${startH}h–${endH}h).`;
+        }
         break;
       }
       case "session_burst": {
-        const windowMin = Number(r.config?.window_minutes ?? 10);
-        const maxSessions = Number(r.config?.max_sessions ?? 5);
-        const cutoff = new Date(now.getTime() - windowMin * 60000);
-        // Detecta tanto session_start/screen_on (eventos de sesión) como aperturas de app (app_usage en ventana corta)
-        const recent = events.filter((e: any) =>
-          ["session_start", "screen_on", "app_usage"].includes(e.event_type) &&
-          new Date(e.occurred_at) >= cutoff
-        );
-        if (recent.length >= maxSessions) hit = {
-          title: `📱 Uso compulsivo: ${recent.length} aperturas en ${windowMin} min`,
-          message: `${r.name} — Posible patrón de uso ansioso.`,
-        };
+        const windowMin = Number(cfg.window_minutes ?? 10);
+        const maxSessions = Number(cfg.max_sessions ?? 8);
+        const windowStart = new Date(now - windowMin * 60000).toISOString();
+        const recentEvents = events.filter(e => e.occurred_at >= windowStart);
+        if (recentEvents.length >= maxSessions) {
+          triggered = true;
+          title = "Uso compulsivo detectado";
+          message = `${recentEvents.length} aperturas en los últimos ${windowMin} minutos.`;
+        }
         break;
       }
     }
 
-    if (hit) triggered.push({ rule: r, ...hit });
+    if (triggered) {
+      alertsToInsert.push({ child_id: childId, parent_id: parentId, severity: rule.severity, title, message });
+      await sbPatch("rules", `id=eq.${rule.id}`, { last_triggered_at: new Date().toISOString() });
+    }
   }
 
-  // Insertar alertas + actualizar cooldown (batch)
-  if (triggered.length > 0) {
-    await admin.from("alerts").insert(triggered.map(t => ({
-      child_id: childId,
-      parent_id: parentId,
-      severity: t.rule.severity,
-      title: t.title,
-      message: t.message,
-    })));
-    await admin.from("rules").update({ last_triggered_at: now.toISOString() })
-      .in("id", triggered.map(t => t.rule.id));
+  if (alertsToInsert.length > 0) {
+    await sbInsert("alerts", alertsToInsert);
   }
-
-  return triggered.map(t => ({ rule_id: t.rule.id, title: t.title }));
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const rawText = await req.text().catch(() => "{}");
+    const body = (() => { try { return JSON.parse(rawText); } catch { return {}; } })();
     const token = String(body.token ?? "").trim();
-    const eventsRaw = Array.isArray(body.events) ? body.events : (body.event ? [body.event] : []);
+    const evtsRaw: unknown[] = Array.isArray(body.events) ? body.events : [];
 
     if (!token || token.length < 16 || token.length > 128) {
-      return new Response(JSON.stringify({ error: "token requerido" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return json({ error: "token requerido" }, 401);
     }
-    if (eventsRaw.length === 0 || eventsRaw.length > 500) {
-      return new Response(JSON.stringify({ error: "events: 1..500" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    const { data: child, error: childErr } = await admin
-      .from("children").select("id, parent_id").eq("ingest_token", token).maybeSingle();
-    if (childErr) throw childErr;
-    if (!child) {
-      return new Response(JSON.stringify({ error: "token inválido" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (evtsRaw.length === 0 || evtsRaw.length > 500) {
+      return json({ error: "events: 1..500" }, 400);
     }
 
-    const rows = (eventsRaw as IncomingEvent[]).map((e) => {
-      const dur = Math.max(0, Math.min(86400, Number(e.duration_seconds ?? 0) | 0));
-      const type = normalizeEventType(String(e.event_type ?? "app_usage"));
-      const occurred = e.occurred_at ? new Date(e.occurred_at) : new Date();
-      const app = e.app_name ? String(e.app_name).slice(0, 80) : null;
+    // Buscar hijo por token
+    const kids = (await sbGet(
+      "children",
+      `select=id,parent_id&ingest_token=eq.${encodeURIComponent(token)}&limit=1`,
+    )) as Array<{ id: string; parent_id: string }>;
+
+    if (!Array.isArray(kids) || kids.length === 0) {
+      return json({ error: "token inválido" }, 401);
+    }
+    const child = kids[0];
+    const now = new Date().toISOString();
+    const today = now.slice(0, 10);
+
+    // Normalizar eventos
+    const rows = evtsRaw.map((e: unknown) => {
+      const ev = e as Record<string, unknown>;
+      const dur = Math.max(0, Math.min(86400, Number(ev.duration_seconds ?? 0) | 0));
+      const occurred = ev.occurred_at ? String(ev.occurred_at) : now;
+      const app = ev.app_name ? String(ev.app_name).slice(0, 80) : null;
+      const meta = ev.metadata && typeof ev.metadata === "object" ? ev.metadata : {};
       return {
         child_id: child.id,
         parent_id: child.parent_id,
-        occurred_at: isNaN(occurred.getTime()) ? new Date().toISOString() : occurred.toISOString(),
+        occurred_at: occurred,
         app_name: app,
         duration_seconds: dur,
-        event_type: type,
-        source: "api" as const,
-        metadata: e.metadata && typeof e.metadata === "object" ? e.metadata : {},
+        event_type: "app_usage",
+        source: "api",
+        metadata: meta,
       };
     });
 
-    const { error: insErr } = await admin.from("usage_events").insert(rows);
-    if (insErr) throw insErr;
+    // Insertar eventos brutos
+    const ins = await sbInsert("usage_events", rows);
+    if (ins.status >= 300) {
+      console.error("insert error:", ins.text);
+      return json({ error: "insert failed", detail: ins.text }, 500);
+    }
 
-    // Agregar métricas de forma NO BLOQUEANTE (fire-and-forget) — no añade latencia al cliente
-    const days = Array.from(new Set(rows.map(r => r.occurred_at.slice(0, 10))));
-    Promise.all(
-      days.map(d => admin.rpc("aggregate_events_to_metric", { _child_id: child.id, _day: d }))
-    ).catch(err => console.error("aggregate error (background):", err));
+    // ── Recalcular métrica del día desde todos los eventos (evita double-counting) ──
+    const allEvents = (await sbGet(
+      "usage_events",
+      `select=duration_seconds,occurred_at,app_name&child_id=eq.${child.id}&occurred_at=gte.${today}T00:00:00Z&occurred_at=lt.${today}T23:59:59Z&event_type=eq.app_usage`,
+    )) as Array<{ duration_seconds: number; occurred_at: string; app_name: string | null }>;
 
-    // Actualizar last_ingest_at (await — fire-and-forget no garantiza ejecución en edge workers)
-    await admin.from("children").update({ last_ingest_at: new Date().toISOString() }).eq("id", child.id);
+    const totalMinutes = Math.round(allEvents.reduce((s, e) => s + (e.duration_seconds ?? 0), 0) / 60);
+    const nightMinutes = Math.round(allEvents.reduce((s, e) => {
+      const h = new Date(e.occurred_at).getHours();
+      return s + ((h >= 22 || h < 7) ? (e.duration_seconds ?? 0) : 0);
+    }, 0) / 60);
+    const sessions = allEvents.length;
 
-    // EVENT-DRIVEN: evaluar reglas en tiempo casi real
-    const alerts = await evaluateRules(admin, child.id, child.parent_id, rows);
+    // App dominante
+    const appCounts: Record<string, number> = {};
+    for (const e of allEvents) {
+      if (e.app_name) appCounts[e.app_name] = (appCounts[e.app_name] ?? 0) + (e.duration_seconds ?? 0);
+    }
+    const dominantApp = Object.keys(appCounts).sort((a, b) => appCounts[b] - appCounts[a])[0] ?? null;
 
-    return new Response(JSON.stringify({ ok: true, ingested: rows.length, days, alerts_triggered: alerts }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Upsert métrica (ON CONFLICT reemplaza el valor calculado, no acumula)
+    const existingMetric = (await sbGet(
+      "usage_metrics",
+      `select=id&child_id=eq.${child.id}&metric_date=eq.${today}&limit=1`,
+    )) as Array<{ id: string }>;
+
+    if (existingMetric.length > 0) {
+      await sbPatch("usage_metrics", `id=eq.${existingMetric[0].id}`, {
+        total_minutes: totalMinutes,
+        night_minutes: nightMinutes,
+        sessions,
+        dominant_app: dominantApp,
+      });
+    } else {
+      await sbInsert("usage_metrics", [{
+        child_id: child.id,
+        parent_id: child.parent_id,
+        metric_date: today,
+        total_minutes: totalMinutes,
+        night_minutes: nightMinutes,
+        sessions,
+        dominant_app: dominantApp,
+        source: "api",
+      }]);
+    }
+
+    // Actualizar last_ingest_at
+    await sbPatch("children", `id=eq.${child.id}`, { last_ingest_at: now });
+
+    // ── Evaluar reglas ──
+    await evaluateRules(
+      child.id,
+      child.parent_id,
+      { total_minutes: totalMinutes, night_minutes: nightMinutes, sessions, dominant_app: dominantApp },
+      rows.map(r => ({ app_name: r.app_name, occurred_at: r.occurred_at })),
+    );
+
+    return json({ ok: true, child_id: child.id, ingested: rows.length });
   } catch (e) {
-    console.error("ingest-usage error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("ingest-usage crash:", e);
+    return json({ error: String(e) }, 500);
   }
 });

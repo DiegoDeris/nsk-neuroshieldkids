@@ -13,8 +13,8 @@ Deno.serve(async (req) => {
 
   try {
     const { child, metric, heuristic, history } = await req.json();
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not configured");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY not configured");
 
     const lang = (child?.lang ?? "es").toString().startsWith("en") ? "en" : "es";
 
@@ -57,11 +57,19 @@ Histórico últimos 14 días: ${JSON.stringify((history ?? []).slice(0,14))}
 
 IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuando total_minutes es bajo (el dispositivo solo reporta tiempo con el navegador abierto, no todas las apps). Usa interactions_per_min y visibility_changes para inferir dependencia, ansiedad y fragmentación de atención aunque el tiempo total sea pequeño.`;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+    // Retry hasta 3 veces en caso de 429 (rate limit modelo gratuito)
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://nsk-neuroshieldkids.vercel.app",
+          "X-Title": "NSK NeuroShield Kids",
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-120b:free",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -119,26 +127,29 @@ IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuand
         tool_choice: { type: "function", function: { name: "emit_emotional_analysis" } },
       }),
     });
+      if (response.status !== 429) break;
+      if (attempt < 2) await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
+    }
 
-    if (response.status === 429) {
-      return new Response(JSON.stringify({ error: "Límite de peticiones alcanzado. Inténtalo en unos segundos." }), {
+    if (response!.status === 429) {
+      return new Response(JSON.stringify({ error: "Límite de peticiones alcanzado. Inténtalo en unos minutos." }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
-    if (response.status === 402) {
-      return new Response(JSON.stringify({ error: "Cuota de IA agotada. Revisa tu límite en Google AI Studio." }), {
+    if (response!.status === 402) {
+      return new Response(JSON.stringify({ error: "Cuota de IA agotada." }), {
         status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
-    if (!response.ok) {
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      let detail = `Error IA (${response.status})`;
+    if (!response!.ok) {
+      const t = await response!.text();
+      console.error("AI gateway error:", response!.status, t);
+      let detail = `Error IA (${response!.status})`;
       try { const j = JSON.parse(t); detail = j?.error?.message ?? j?.error ?? detail; } catch { /* noop */ }
       throw new Error(detail);
     }
 
-    const data = await response.json();
+    const data = await response!.json();
     const call = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!call) throw new Error("Sin tool call en respuesta IA");
     const args = JSON.parse(call.function.arguments);

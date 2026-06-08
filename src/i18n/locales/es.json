@@ -69,9 +69,15 @@
     "privacy":    { "title": "Sin spyware — GDPR",          "text": "Solo metadatos de uso: tiempo, sesiones, horario, comportamiento. Nunca mensajes, fotos ni contenido privado." }
   },
   "plans": {
-    "free": { "name": "Gratis", "period": "siempre", "cta": "Empezar gratis", "current": "Tu plan actual", "p1": "1 análisis IA gratis", "p2": "1 hijo/a", "p3": "Dashboard básico" },
-    "basic": { "name": "Básico", "period": "/mes", "cta": "Elegir Básico", "ctaStart": "Empezar Básico", "p1": "Análisis IA ilimitados", "p2": "Hasta 3 hijos", "p3": "Dashboard completo", "p4": "Alertas en tiempo real" },
-    "premium": { "name": "Premium", "period": "/mes", "cta": "Elegir Premium", "ctaStart": "Empezar Premium", "p1": "Todo en Básico", "p2": "Hijos ilimitados", "p3": "Gamificación completa", "p4": "Reportes PDF", "p5": "Alertas avanzadas", "p6": "Soporte prioritario" },
+    "free": { "name": "Gratis", "period": "siempre", "cta": "Empezar gratis", "current": "Tu plan actual",
+      "p1": "1 hijo/a", "p2": "Historial 3 días", "p3": "Score semanal sin explicación", "p4": "Alertas: número y severidad" },
+    "basic": { "name": "Básico", "period": "/mes", "cta": "Elegir Básico", "ctaStart": "Empezar Básico",
+      "p1": "Hasta 3 hijos", "p2": "Historial 30 días", "p3": "Score diario con explicación", "p4": "Alertas con detalle completo", "p5": "Reglas de horarios y límites", "p6": "Soporte normal" },
+    "premium": { "name": "Premium", "period": "/mes", "cta": "Elegir Premium", "ctaStart": "Empezar Premium",
+      "p1": "Hijos ilimitados", "p2": "Historial ilimitado", "p3": "Score diario + predicción IA", "p4": "Alertas predictivas", "p5": "Recomendaciones IA accionables", "p6": "Reportes PDF", "p7": "Reglas avanzadas", "p8": "Soporte prioritario" },
+    "annualSave": "Ahorra {{months}} meses",
+    "monthly": "Mensual",
+    "annual": "Anual",
     "stripeNotice": "Los pagos se activarán cuando conectemos Stripe en el siguiente paso."
   },
   "pricing": {

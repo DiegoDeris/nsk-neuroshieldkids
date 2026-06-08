@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -6,17 +7,27 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { Brain, ShieldCheck, Sparkles, BarChart3, Bell, Trophy, Lock, Check, TrendingUp, Lightbulb, BookOpen, Smartphone, UserCheck, Activity } from "lucide-react";
 import hero from "@/assets/nsk-hero.jpg";
 
+const PRICES = {
+  basic:   { monthly: "8.99€", annual: "6.58€", annualTotal: "79€" },
+  premium: { monthly: "14.99€", annual: "9.92€", annualTotal: "119€" },
+};
+
 const Landing = () => {
   const { t } = useTranslation();
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
   const plans = [
-    { id: "free", name: t("plans.free.name"), price: "0€", period: t("plans.free.period"),
+    { id: "free", name: t("plans.free.name"), price: "0€", period: t("plans.free.period"), annualNote: null,
       perks: [t("plans.free.p1"), t("plans.free.p2"), t("plans.free.p3")],
       cta: t("plans.free.cta"), highlight: false },
-    { id: "basic", name: t("plans.basic.name"), price: "12€", period: t("plans.basic.period"),
+    { id: "basic", name: t("plans.basic.name"),
+      price: billing === "monthly" ? PRICES.basic.monthly : PRICES.basic.annual,
+      period: "/mes", annualNote: billing === "annual" ? `${PRICES.basic.annualTotal}/año · Ahorra ~2 meses` : null,
       perks: [t("plans.basic.p1"), t("plans.basic.p2"), t("plans.basic.p3"), t("plans.basic.p4")],
       cta: t("plans.basic.cta"), highlight: false },
-    { id: "premium", name: t("plans.premium.name"), price: "29€", period: t("plans.premium.period"),
+    { id: "premium", name: t("plans.premium.name"),
+      price: billing === "monthly" ? PRICES.premium.monthly : PRICES.premium.annual,
+      period: "/mes", annualNote: billing === "annual" ? `${PRICES.premium.annualTotal}/año · Ahorra ~3 meses` : null,
       perks: [t("plans.premium.p1"), t("plans.premium.p2"), t("plans.premium.p3"), t("plans.premium.p4"), t("plans.premium.p6")],
       cta: t("plans.premium.cta"), highlight: true },
   ];
@@ -121,9 +132,17 @@ const Landing = () => {
       </section>
 
       <section id="planes" className="container py-16">
-        <div className="text-center max-w-2xl mx-auto mb-10">
+        <div className="text-center max-w-2xl mx-auto mb-8">
           <h2 className="text-3xl lg:text-4xl font-bold mb-3">{t("landing.plansTitle")}</h2>
-          <p className="text-muted-foreground">{t("landing.plansSubtitle")}</p>
+          <p className="text-muted-foreground mb-6">{t("landing.plansSubtitle")}</p>
+          <div className="inline-flex items-center bg-muted rounded-full p-1 gap-1">
+            <button onClick={() => setBilling("monthly")} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${billing === "monthly" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}>
+              {t("plans.monthly")}
+            </button>
+            <button onClick={() => setBilling("annual")} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${billing === "annual" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}>
+              {t("plans.annual")} <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">−30%</span>
+            </button>
+          </div>
         </div>
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           {plans.map(p => (
@@ -134,10 +153,12 @@ const Landing = () => {
                 </div>
               )}
               <h3 className="text-xl font-bold">{p.name}</h3>
-              <div className="mt-3 mb-4">
+              <div className="mt-3 mb-1">
                 <span className="text-4xl font-extrabold">{p.price}</span>
-                <span className="text-muted-foreground">{p.period}</span>
+                <span className="text-muted-foreground text-sm">{p.period}</span>
               </div>
+              {p.annualNote && <p className="text-xs text-emerald-600 font-semibold mb-3">{p.annualNote}</p>}
+              {!p.annualNote && <div className="mb-4" />}
               <ul className="space-y-2 mb-6">
                 {p.perks.map(perk => (
                   <li key={perk} className="flex items-start gap-2 text-sm">

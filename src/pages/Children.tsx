@@ -8,16 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { z } from "zod";
+import { useSubscription } from "@/hooks/use-subscription";
 
 const EMOJIS = ["🧒","👧","👦","🧑","👶","🦊","🐼","🦁","🐻","🦄"];
 
 const Children = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { limits, plan } = useSubscription();
   const [list, setList] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", age: 10, avatar_emoji: "🧒" });
@@ -37,6 +39,11 @@ const Children = () => {
   useEffect(() => { if (user) load(); }, [user]);
 
   const create = async () => {
+    if (list.length >= limits.maxChildren) {
+      const planNames: Record<string, string> = { free: "Gratis", basic: "Básico", premium: "Premium" };
+      toast.error(`Tu plan ${planNames[plan]} permite máximo ${limits.maxChildren} hijo${limits.maxChildren > 1 ? "s" : ""}. Actualiza tu plan para añadir más.`);
+      return;
+    }
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
     const { error } = await supabase.from("children").insert([{
@@ -85,7 +92,12 @@ const Children = () => {
             <p className="text-muted-foreground">{t("children.subtitle")}</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> {t("children.add")}</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button disabled={list.length >= limits.maxChildren}>
+                {list.length >= limits.maxChildren ? <Lock className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                {list.length >= limits.maxChildren ? `Límite alcanzado (plan ${plan})` : t("children.add")}
+              </Button>
+            </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>{t("children.newChild")}</DialogTitle></DialogHeader>
               <div className="space-y-4">

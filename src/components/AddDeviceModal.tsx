@@ -2,17 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, CheckCircle2, RefreshCw, Smartphone, X } from "lucide-react";
+import { Loader2, CheckCircle2, RefreshCw, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const GENERATE_FN = `${SUPABASE_URL}/functions/v1/generate-install-token`;
+import { toast } from "sonner";
 
 type Props = {
   childId: string;
   childName: string;
   childAvatar: string;
+  ingestToken?: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onConnected?: () => void;
@@ -20,44 +18,39 @@ type Props = {
 
 type Phase = "loading" | "ready" | "connected" | "error";
 
-export function AddDeviceModal({ childId, childName, childAvatar, open, onOpenChange, onConnected }: Props) {
-  const { session } = useAuth();
+export function AddDeviceModal({ childId, childName, childAvatar, ingestToken: initialToken, open, onOpenChange, onConnected }: Props) {
   const [phase, setPhase] = useState<Phase>("loading");
-  const [installUrl, setInstallUrl] = useState("");
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [token, setToken] = useState(initialToken ?? "");
   const [errMsg, setErrMsg] = useState("");
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  const generate = async () => {
+  // Ensure token exists — auto-generate if missing
+  const ensureToken = async () => {
     setPhase("loading");
     setErrMsg("");
     try {
-      const res = await fetch(GENERATE_FN, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ child_id: childId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error generando QR");
-      setInstallUrl(data.url);
-      setExpiresAt(data.expires_at);
+      let tok = token;
+      if (!tok || tok.length < 16) {
+        tok = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+          .map(b => b.toString(16).padStart(2, "0")).join("");
+        const { error } = await supabase.from("children").update({ ingest_token: tok }).eq("id", childId);
+        if (error) throw error;
+        setToken(tok);
+      }
       setPhase("ready");
     } catch (e: any) {
-      setErrMsg(e.message);
+      setErrMsg(e.message ?? "Error generando QR");
       setPhase("error");
     }
   };
 
-  // Generate on open
   useEffect(() => {
-    if (open && session) generate();
+    if (open) ensureToken();
     if (!open) setPhase("loading");
-  }, [open, childId, session]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, childId]);
 
-  // Real-time: watch children.last_ingest_at for this child
+  // Real-time: detect first ingest → connected
   useEffect(() => {
     if (!open || phase !== "ready") return;
 
@@ -81,15 +74,15 @@ export function AddDeviceModal({ childId, childName, childAvatar, open, onOpenCh
     };
   }, [open, phase, childId]);
 
-  const hoursLeft = expiresAt
-    ? Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 3_600_000))
-    : null;
+  const monitorUrl = token
+    ? `${window.location.origin}/monitor?t=${encodeURIComponent(token)}&n=${encodeURIComponent(childName)}`
+    : "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[340px] rounded-3xl p-0 overflow-hidden border-0 shadow-2xl">
 
-        {/* Top gradient header */}
+        {/* Header */}
         <div className="bg-gradient-to-b from-blue-50 to-white px-6 pt-8 pb-5 text-center">
           <div className="text-5xl mb-3">{childAvatar}</div>
           <h2 className="text-lg font-bold text-slate-800">{childName}</h2>
@@ -108,7 +101,7 @@ export function AddDeviceModal({ childId, childName, childAvatar, open, onOpenCh
           {phase === "error" && (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center py-6">
               <p className="text-sm text-red-500">{errMsg}</p>
-              <Button variant="outline" size="sm" onClick={generate} className="gap-2 rounded-xl">
+              <Button variant="outline" size="sm" onClick={ensureToken} className="gap-2 rounded-xl">
                 <RefreshCw className="h-4 w-4" /> Reintentar
               </Button>
             </div>
@@ -121,25 +114,21 @@ export function AddDeviceModal({ childId, childName, childAvatar, open, onOpenCh
                   Escanea con el móvil de <strong>{childName}</strong>
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Abrirá la descarga automáticamente
+                  iOS o Android — se abre directo en el navegador
                 </p>
               </div>
 
-              {/* QR */}
               <div className="bg-white p-4 rounded-2xl shadow-inner border border-slate-100">
-                <QRCodeSVG value={installUrl} size={210} level="M" />
+                <QRCodeSVG value={monitorUrl} size={210} level="M" />
               </div>
 
               <div className="flex items-center gap-2 text-xs text-slate-400 w-full">
                 <Smartphone className="h-3.5 w-3.5 shrink-0" />
                 <span className="flex-1">Esperando vinculación…</span>
-                {hoursLeft !== null && (
-                  <span className="text-slate-300">caduca {hoursLeft}h</span>
-                )}
               </div>
 
               <button
-                onClick={generate}
+                onClick={() => { setToken(""); ensureToken(); toast.info("Nuevo QR generado"); }}
                 className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <RefreshCw className="h-3 w-3" />

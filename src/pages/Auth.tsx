@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,16 @@ const Auth = () => {
   const [mode, setMode] = useState<"signin" | "signup">(params.get("mode") === "signup" ? "signup" : "signin");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", full_name: "" });
+  const [recovery, setRecovery] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+
+  // Detectar flujo de recuperación desde el hash de la URL
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery")) {
+      setRecovery(true);
+    }
+  }, []);
 
   const translateAuthError = (message?: string) => {
     const normalized = (message ?? "").toLowerCase();
@@ -73,6 +83,40 @@ const Auth = () => {
     }
   };
 
+  // Formulario de nueva contraseña (flujo recovery)
+  if (recovery) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="flex justify-center"><Logo /></div>
+          <div>
+            <h1 className="text-2xl font-bold">Nueva contraseña</h1>
+            <p className="text-sm text-muted-foreground mt-1">Elige una contraseña nueva para tu cuenta.</p>
+          </div>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (newPassword.length < 8) { toast.error(t("auth.passwordMin")); return; }
+            setLoading(true);
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            setLoading(false);
+            if (error) { toast.error(error.message); return; }
+            toast.success("¡Contraseña actualizada!");
+            navigate("/dashboard");
+          }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Nueva contraseña</Label>
+              <Input id="new-password" type="password" required minLength={8} placeholder="8 caracteres o más"
+                value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Guardando…" : "Guardar contraseña"}
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex gradient-hero items-center justify-center p-12 text-primary-foreground">
@@ -108,7 +152,22 @@ const Auth = () => {
                 onChange={e => setForm({ ...form, email: e.target.value })} placeholder="you@email.com" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{t("auth.password")}</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">{t("auth.password")}</Label>
+                {mode === "signin" && (
+                  <button type="button" className="text-xs text-primary hover:underline"
+                    onClick={async () => {
+                      if (!form.email) { toast.error(t("auth.invalidEmail")); return; }
+                      const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
+                        redirectTo: `${window.location.origin}/auth?mode=signin`,
+                      });
+                      if (error) toast.error(error.message);
+                      else toast.success("Revisa tu email para restablecer tu contraseña.");
+                    }}>
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                )}
+              </div>
               <Input id="password" type="password" required minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })} placeholder={t("auth.passwordHint")} />
             </div>

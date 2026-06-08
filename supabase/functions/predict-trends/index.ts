@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
     const { data: metrics } = await admin.from("usage_metrics").select("*").eq("child_id", child_id).order("metric_date", { ascending: false }).limit(30);
     const { data: scores } = await admin.from("emotional_scores").select("score,risk_level,patterns,created_at").eq("child_id", child_id).order("created_at", { ascending: false }).limit(30);
 
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY missing");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY missing");
 
     const sys = `Eres analista senior de bienestar digital infantil. NO diagnosticas. Predices trayectorias usando los datos de uso digital y los scores históricos. Español, claro, accionable, basado en evidencia. Devuelve siempre intervalos de confianza (lo + bajo, esperado, lo + alto) y dos escenarios: con plan de prevención aplicado y sin intervención.`;
     const usr = `Niño/a: ${child.name}, ${child.age} años.
@@ -36,14 +36,21 @@ Métricas (más reciente primero, max 30): ${JSON.stringify((metrics ?? []).map(
 Scores recientes (max 30): ${JSON.stringify(scores ?? [])}
 Predice horizontes 3, 7 y 30 días. Identifica 3 indicadores tempranos a vigilar y 3 acciones de prevención inmediatas.`;
 
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
-        tools: [{ type: "function", function: {
-          name: "emit_prediction",
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://nsk-neuroshieldkids.vercel.app",
+          "X-Title": "NSK NeuroShield Kids",
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-120b:free",
+          messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
+          tools: [{ type: "function", function: {
+            name: "emit_prediction",
           description: "Devuelve la predicción multi-horizonte con escenarios e indicadores tempranos.",
           parameters: {
             type: "object",
@@ -100,19 +107,24 @@ Predice horizontes 3, 7 y 30 días. Identifica 3 indicadores tempranos a vigilar
             required: ["horizons","scenario_with_intervention","scenario_no_intervention","early_warning_signals","drivers","prevention_plan","confidence","data_quality","explanation"],
           },
         }}],
-        tool_choice: { type: "function", function: { name: "emit_prediction" } },
-      }),
-    });
-
-    if (res.status === 429) return new Response(JSON.stringify({ error: "Límite de peticiones" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (res.status === 402) return new Response(JSON.stringify({ error: "Cuota de IA agotada" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("AI gateway error", res.status, body);
-      throw new Error(`AI ${res.status}: ${body.slice(0, 300)}`);
+          tool_choice: { type: "function", function: { name: "emit_prediction" } },
+        }),
+      });
+      if (res.status !== 429) break;
+      if (attempt < 2) await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
     }
 
-    const aiJson = await res.json();
+    if (res!.status === 429) return new Response(JSON.stringify({ error: "Límite de peticiones. Inténtalo en unos minutos." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (res!.status === 402) return new Response(JSON.stringify({ error: "Cuota de IA agotada." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!res!.ok) {
+      const body = await res!.text();
+      console.error("AI gateway error", res!.status, body);
+      let detail = `Error IA (${res!.status})`;
+      try { const j = JSON.parse(body); detail = j?.error?.message ?? j?.error ?? detail; } catch { /* noop */ }
+      throw new Error(detail);
+    }
+
+    const aiJson = await res!.json();
     const args = JSON.parse(aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "{}");
 
     const h7 = (args.horizons ?? []).find((h: any) => h.days === 7) ?? args.horizons?.[0] ?? { expected_score: 50, risk_level: "medium", trend: "stable" };
