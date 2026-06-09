@@ -88,6 +88,16 @@ Deno.serve(async (req) => {
       await upsertSub(userId, { plan: "free", status: "inactive", stripe_subscription_id: null, current_period_end: null });
     }
 
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subId = invoice.subscription as string | null;
+      if (!subId) return new Response("ok");
+      const sub = await stripe.subscriptions.retrieve(subId);
+      const userId = sub.metadata?.user_id;
+      if (!userId) return new Response("ok");
+      await upsertSub(userId, { status: "past_due" });
+    }
+
     return new Response(JSON.stringify({ received: true }), { status: 200, headers: { "Content-Type": "application/json" } });
   } catch (e) {
     console.error("webhook handler error:", e);

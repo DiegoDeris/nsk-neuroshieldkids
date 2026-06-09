@@ -94,7 +94,31 @@ Deno.serve(async (req) => {
       .gte("occurred_at", `${day}T00:00:00Z`)
       .lt("occurred_at", `${day}T23:59:59Z`);
 
-    const childIds = Array.from(new Set((childrenWithEvents ?? []).map((r: any) => r.child_id)));
+    const allChildIds = Array.from(new Set((childrenWithEvents ?? []).map((r: any) => r.child_id)));
+
+    // Solo procesar hijos de usuarios con plan premium activo
+    const premiumParents = new Set<string>();
+    if (allChildIds.length > 0) {
+      const { data: premiumSubs } = await admin
+        .from("subscriptions")
+        .select("user_id")
+        .eq("plan", "premium")
+        .eq("status", "active");
+      (premiumSubs ?? []).forEach((s: any) => premiumParents.add(s.user_id));
+    }
+
+    // Filtrar hijos: obtener parent_id y filtrar por plan
+    const childIds: string[] = [];
+    if (allChildIds.length > 0) {
+      const { data: childRows } = await admin
+        .from("children")
+        .select("id,parent_id")
+        .in("id", allChildIds);
+      (childRows ?? []).forEach((c: any) => {
+        if (premiumParents.has(c.parent_id)) childIds.push(c.id);
+      });
+    }
+
     const results: any[] = [];
 
     for (const cid of childIds) {

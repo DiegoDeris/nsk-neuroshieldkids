@@ -2,16 +2,37 @@
 // Devuelve dimensiones (sueño, ansiedad, ánimo, social, dependencia, atención),
 // score global, severidad, evidencia, plan inmediato + largo plazo,
 // guion de conversación y derivación profesional cuando proceda.
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function unauthorized(msg: string) {
+  return new Response(JSON.stringify({ error: msg }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // ── Auth: verificar JWT y plan premium ──────────────────────────────────
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader) return unauthorized("no autorizado");
+    const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) return unauthorized("sesión inválida");
+
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: sub } = await admin.from("subscriptions").select("plan,status").eq("user_id", user.id).maybeSingle();
+    if (!sub || sub.status !== "active" || sub.plan !== "premium") {
+      return new Response(JSON.stringify({ error: "Esta función requiere plan Premium." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
     const { child, metric, heuristic, history } = await req.json();
     const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY not configured");

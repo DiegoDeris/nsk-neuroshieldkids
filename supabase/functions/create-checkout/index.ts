@@ -67,6 +67,12 @@ Deno.serve(async (req) => {
         metadata: { user_id: user.id },
       });
       customerId = customer.id;
+      // Persistir inmediatamente para evitar duplicados en intentos fallidos
+      await fetch(`${SB_URL}/rest/v1/subscriptions?user_id=eq.${user.id}`, {
+        method: "PATCH",
+        headers: { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ stripe_customer_id: customerId }),
+      });
     }
 
     const session = await stripe.checkout.sessions.create({

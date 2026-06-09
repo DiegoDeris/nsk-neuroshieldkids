@@ -218,9 +218,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // ── Recalcular métrica del día desde todos los eventos (evita double-counting) ──
+    const todayNextDay = new Date(today + "T00:00:00Z"); todayNextDay.setDate(todayNextDay.getDate() + 1);
+    const tomorrowDate = todayNextDay.toISOString().slice(0, 10);
     const allEvents = (await sbGet(
       "usage_events",
-      `select=duration_seconds,occurred_at,app_name&child_id=eq.${child.id}&occurred_at=gte.${today}T00:00:00Z&occurred_at=lt.${today}T23:59:59Z&event_type=eq.app_usage`,
+      `select=duration_seconds,occurred_at,app_name&child_id=eq.${child.id}&occurred_at=gte.${today}T00:00:00Z&occurred_at=lt.${tomorrowDate}T00:00:00Z&event_type=eq.app_usage`,
     )) as Array<{ duration_seconds: number; occurred_at: string; app_name: string | null }>;
 
     const totalMinutes = Math.round(allEvents.reduce((s, e) => s + (e.duration_seconds ?? 0), 0) / 60);

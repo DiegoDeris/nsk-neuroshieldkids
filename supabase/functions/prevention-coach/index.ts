@@ -24,6 +24,11 @@ Deno.serve(async (req) => {
     const { data: child } = await admin.from("children").select("*").eq("id", child_id).maybeSingle();
     if (!child || child.parent_id !== user.id) return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const { data: sub } = await admin.from("subscriptions").select("plan,status").eq("user_id", user.id).maybeSingle();
+    if (!sub || sub.status !== "active" || sub.plan !== "premium") {
+      return new Response(JSON.stringify({ error: "Esta función requiere plan Premium." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const [{ data: metrics }, { data: scores }, { data: lastPred }] = await Promise.all([
       admin.from("usage_metrics").select("*").eq("child_id", child_id).order("metric_date", { ascending: false }).limit(14),
       admin.from("emotional_scores").select("*").eq("child_id", child_id).order("created_at", { ascending: false }).limit(7),

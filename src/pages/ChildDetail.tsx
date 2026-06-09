@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { computeEmotionalScore, computeScoreWithHistory, riskLabel, hoursAgo } from "@/lib/scoring";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
-import { Brain, FileDown, Sparkles, ArrowLeft, Trophy, AlertTriangle, TrendingUp, Phone, MessageSquare, Target, Clock, Moon, Activity, Smartphone, CheckCircle2, ChevronDown } from "lucide-react";
+import { Brain, FileDown, Sparkles, ArrowLeft, Trophy, AlertTriangle, TrendingUp, Phone, MessageSquare, Target, Clock, Moon, Activity, Smartphone, CheckCircle2, ChevronDown, RefreshCw } from "lucide-react";
 import { QuickConnect } from "@/components/QuickConnect";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Lock } from "lucide-react";
@@ -283,20 +283,67 @@ const ChildDetail = () => {
     long_term_actions: ai.long_term_actions,
   } : null);
 
-  const downloadReport = () => {
-    const lines = [
-      `Informe NeuroShield Kids - ${child?.name}`,
-      `Generado: ${new Date().toLocaleString("es")}`,
-      `\n== Últimos scores ==`,
-      ...scores.slice(0, 10).map(s => `${new Date(s.created_at).toLocaleDateString("es")} · Score ${s.score} (${s.risk_level}) - ${s.explanation ?? ""}`),
-      `\n== Últimas métricas ==`,
-      ...metrics.slice(0, 10).map(m => `${m.metric_date} · ${m.total_minutes} min · noche ${m.night_minutes} min · ${m.sessions} sesiones · app: ${m.dominant_app ?? "n/d"}`),
-    ].join("\n");
-    const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `informe-${child?.name}.txt`; a.click();
-    URL.revokeObjectURL(url);
+  const downloadReport = async () => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 18;
+    const usable = pageW - margin * 2;
+    let y = 22;
+
+    const addLine = (text: string, size = 11, bold = false, color: [number,number,number] = [30,30,30]) => {
+      doc.setFontSize(size);
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setTextColor(...color);
+      const lines = doc.splitTextToSize(text, usable);
+      lines.forEach((line: string) => {
+        if (y > 270) { doc.addPage(); y = 22; }
+        doc.text(line, margin, y);
+        y += size * 0.45;
+      });
+      y += 2;
+    };
+
+    // Header
+    doc.setFillColor(37, 99, 235);
+    doc.rect(0, 0, pageW, 16, "F");
+    doc.setFontSize(13); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
+    doc.text("NeuroShield Kids — Informe de bienestar digital", margin, 11);
+    y = 26;
+
+    addLine(`Perfil: ${child?.name} · ${child?.age} años`, 13, true);
+    addLine(`Generado: ${new Date().toLocaleString("es")}`, 9, false, [100,100,100]);
+    y += 4;
+
+    addLine("ÚLTIMOS SCORES DE BIENESTAR", 11, true, [37,99,235]);
+    doc.setDrawColor(37,99,235); doc.setLineWidth(0.3); doc.line(margin, y, margin+usable, y); y += 4;
+    scores.slice(0, 10).forEach(s => {
+      const risk = s.risk_level === "high" ? "⚠ ALTO" : s.risk_level === "medium" ? "~ MEDIO" : "✓ BAJO";
+      addLine(`${new Date(s.created_at).toLocaleDateString("es")}   Score ${s.score}   ${risk}`, 10);
+      if (s.explanation) addLine(`  ${fixMojibake(s.explanation)}`, 9, false, [90,90,90]);
+      y += 1;
+    });
+
+    y += 4;
+    addLine("MÉTRICAS DE USO (últimos 10 días)", 11, true, [37,99,235]);
+    doc.line(margin, y, margin+usable, y); y += 4;
+    metrics.slice(0, 10).forEach(m => {
+      addLine(`${m.metric_date}   ${m.total_minutes} min totales · ${m.night_minutes} min noche · ${m.sessions} sesiones · App: ${m.dominant_app ?? "n/d"}`, 9);
+    });
+
+    if (deep?.dimensions) {
+      y += 4;
+      addLine("DIMENSIONES DEL BIENESTAR (último análisis)", 11, true, [37,99,235]);
+      doc.line(margin, y, margin+usable, y); y += 4;
+      Object.entries(deep.dimensions as Record<string,number>).forEach(([k,v]) => {
+        addLine(`${DIM_LABELS[k] ?? k}: ${v}/100`, 10);
+      });
+    }
+
+    y += 6;
+    addLine("Este informe es orientativo. No constituye diagnóstico médico.", 8, false, [150,150,150]);
+
+    doc.save(`informe-${child?.name ?? "nsk"}-${new Date().toISOString().slice(0,10)}.pdf`);
   };
 
   if (!child) return <AppLayout><div className="text-muted-foreground">Cargando…</div></AppLayout>;
@@ -375,9 +422,19 @@ const ChildDetail = () => {
                 </div>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setShowQR(true)}>
-              <ChevronDown className="h-4 w-4 mr-1" /> Mostrar QR
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={async () => {
+                const newTok = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b=>b.toString(16).padStart(2,"0")).join("");
+                const {error} = await supabase.from("children").update({ingest_token: newTok}).eq("id", id!);
+                if (!error) { toast.success("Token regenerado — escanea el nuevo QR"); loadAll(); setShowQR(true); }
+                else toast.error("Error al regenerar token");
+              }}>
+                <RefreshCw className="h-4 w-4 mr-1" /> Regenerar token
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowQR(true)}>
+                <ChevronDown className="h-4 w-4 mr-1" /> Mostrar QR
+              </Button>
+            </div>
           </Card>
         ) : (
           <div className="space-y-2">
