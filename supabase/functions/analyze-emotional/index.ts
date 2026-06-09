@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: sub } = await admin.from("subscriptions").select("plan,status").eq("user_id", user.id).maybeSingle();
-    if (!sub || sub.status !== "active" || sub.plan !== "premium") {
+    if (!sub || !["active", "past_due"].includes(sub.status) || sub.plan !== "premium") {
       return new Response(JSON.stringify({ error: "Esta función requiere plan Premium." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     // ───────────────────────────────────────────────────────────────────────
@@ -79,10 +79,15 @@ Histórico últimos 14 días: ${JSON.stringify((history ?? []).slice(0,14))}
 IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuando total_minutes es bajo (el dispositivo solo reporta tiempo con el navegador abierto, no todas las apps). Usa interactions_per_min y visibility_changes para inferir dependencia, ansiedad y fragmentación de atención aunque el tiempo total sea pequeño.`;
 
     // Retry hasta 3 veces en caso de 429 (rate limit modelo gratuito)
+    const AI_TIMEOUT_MS = 45_000; // 45s per attempt
     let response: Response | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+      try {
       response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
@@ -148,6 +153,12 @@ IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuand
         tool_choice: { type: "function", function: { name: "emit_emotional_analysis" } },
       }),
     });
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        if (fetchErr?.name === "AbortError") throw new Error("El análisis IA tardó demasiado (timeout). Inténtalo de nuevo.");
+        throw fetchErr;
+      }
+      clearTimeout(timeoutId);
       if (response.status !== 429) break;
       if (attempt < 2) await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
     }

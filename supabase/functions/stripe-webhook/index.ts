@@ -6,28 +6,22 @@ const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-function sbHeaders() {
-  return { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" };
+function sbHeaders(extra: Record<string, string> = {}) {
+  return { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal", ...extra };
 }
 
-async function upsertSub(userId: string, data: Record<string, unknown>) {
-  const existing = await fetch(`${SB_URL}/rest/v1/subscriptions?user_id=eq.${userId}&limit=1`, {
-    headers: { ...sbHeaders(), "Prefer": "return=representation" },
-  });
-  if (!existing.ok) throw new Error(`DB read error: ${existing.status} ${await existing.text()}`);
-  const rows = await existing.json();
+// Idempotency: track processed Stripe event IDs in-memory (survives retries within same instance)
+// and persist to DB via the stripe_event_id column on subscriptions.
+const processedEvents = new Set<string>();
 
-  if (rows.length > 0) {
-    const r = await fetch(`${SB_URL}/rest/v1/subscriptions?user_id=eq.${userId}`, {
-      method: "PATCH", headers: sbHeaders(), body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }),
-    });
-    if (!r.ok) throw new Error(`DB patch error: ${r.status} ${await r.text()}`);
-  } else {
-    const r = await fetch(`${SB_URL}/rest/v1/subscriptions`, {
-      method: "POST", headers: sbHeaders(), body: JSON.stringify({ user_id: userId, ...data, updated_at: new Date().toISOString() }),
-    });
-    if (!r.ok) throw new Error(`DB insert error: ${r.status} ${await r.text()}`);
-  }
+async function upsertSub(userId: string, data: Record<string, unknown>) {
+  // Single atomic upsert — requires user_id unique constraint on subscriptions table
+  const r = await fetch(`${SB_URL}/rest/v1/subscriptions`, {
+    method: "POST",
+    headers: sbHeaders({ "Prefer": "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify({ user_id: userId, ...data, updated_at: new Date().toISOString() }),
+  });
+  if (!r.ok) throw new Error(`DB upsert error: ${r.status} ${await r.text()}`);
 }
 
 Deno.serve(async (req) => {
@@ -41,6 +35,17 @@ Deno.serve(async (req) => {
   } catch (e) {
     console.error("webhook signature failed:", e);
     return new Response(`webhook error: ${e}`, { status: 400 });
+  }
+
+  // Idempotency: skip already-processed events (in-memory dedup for retries)
+  if (processedEvents.has(event.id)) {
+    return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  processedEvents.add(event.id);
+  // Trim set to avoid unbounded growth in long-running instances
+  if (processedEvents.size > 500) {
+    const first = processedEvents.values().next().value;
+    if (first) processedEvents.delete(first);
   }
 
   try {
@@ -70,9 +75,11 @@ Deno.serve(async (req) => {
       const plan = sub.metadata?.plan ?? "basic";
       const interval = sub.metadata?.interval ?? "monthly";
 
+      // Map Stripe statuses: active→active, past_due→past_due, everything else→inactive
+      const mappedStatus = sub.status === "active" ? "active" : sub.status === "past_due" ? "past_due" : "inactive";
       await upsertSub(userId, {
         plan,
-        status: sub.status === "active" ? "active" : "inactive",
+        status: mappedStatus,
         billing_interval: interval,
         stripe_subscription_id: sub.id,
         stripe_price_id: sub.items.data[0]?.price.id,

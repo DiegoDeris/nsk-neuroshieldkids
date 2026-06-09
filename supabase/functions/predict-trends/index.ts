@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     if (!child || child.parent_id !== user.id) return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const { data: sub } = await admin.from("subscriptions").select("plan,status").eq("user_id", user.id).maybeSingle();
-    if (!sub || sub.status !== "active" || sub.plan !== "premium") {
+    if (!sub || !["active", "past_due"].includes(sub.status) || sub.plan !== "premium") {
       return new Response(JSON.stringify({ error: "Esta función requiere plan Premium." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -41,10 +41,15 @@ Métricas (más reciente primero, max 30): ${JSON.stringify((metrics ?? []).map(
 Scores recientes (max 30): ${JSON.stringify(scores ?? [])}
 Predice horizontes 3, 7 y 30 días. Identifica 3 indicadores tempranos a vigilar y 3 acciones de prevención inmediatas.`;
 
+    const AI_TIMEOUT_MS = 45_000;
     let res: Response | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+      try {
       res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
@@ -115,6 +120,12 @@ Predice horizontes 3, 7 y 30 días. Identifica 3 indicadores tempranos a vigilar
           tool_choice: { type: "function", function: { name: "emit_prediction" } },
         }),
       });
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        if (fetchErr?.name === "AbortError") throw new Error("Timeout en análisis predictivo. Inténtalo de nuevo.");
+        throw fetchErr;
+      }
+      clearTimeout(timeoutId);
       if (res.status !== 429) break;
       if (attempt < 2) await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
     }

@@ -21,7 +21,8 @@ const LIMITS: Record<Plan, PlanLimits> = {
 
 async function fetchPlan(userId: string, setPlan: (p: Plan) => void, setLoading: (v: boolean) => void) {
   const { data } = await supabase.from("subscriptions").select("plan, status").eq("user_id", userId).maybeSingle();
-  const p = (data?.status === "active" ? data?.plan : "free") as Plan;
+  // past_due keeps the plan during grace period; inactive/cancelled → free
+  const p = (["active", "past_due"].includes(data?.status ?? "") ? data?.plan : "free") as Plan;
   setPlan(LIMITS[p] ? p : "free");
   setLoading(false);
 }

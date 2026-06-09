@@ -159,8 +159,13 @@ Deno.serve(async (req) => {
           d: m.metric_date, t: m.total_minutes, n: m.night_minutes, s: m.sessions
         }));
 
-        const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        const aiCtrl = new AbortController();
+        const aiTimeout = setTimeout(() => aiCtrl.abort(), 60_000);
+        let aiRes: Response;
+        try {
+        aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
           method: "POST",
+          signal: aiCtrl.signal,
           headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: "gemini-2.5-flash",
@@ -186,6 +191,8 @@ Deno.serve(async (req) => {
             tool_choice: { type: "function", function: { name: "emit_emotional_analysis" } },
           }),
         });
+        } catch (e: any) { clearTimeout(aiTimeout); if (e?.name === "AbortError") { console.warn("ai timeout for child", cid); continue; } throw e; }
+        clearTimeout(aiTimeout);
         if (!aiRes.ok) { console.error("ai err", aiRes.status, await aiRes.text()); continue; }
         const aiJson = await aiRes.json();
         const args = JSON.parse(aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "{}");

@@ -69,21 +69,17 @@ const Dashboard = () => {
       const { data: kids } = await supabase.from("children").select("*").eq("parent_id", user.id).order("created_at");
       setChildren(kids ?? []);
       const kidIds = (kids ?? []).map(k => k.id);
-      const map: Record<string, Score | null> = {};
+      // Single batch query instead of N individual queries
+      const map: Record<string, Score | null> = Object.fromEntries(kidIds.map(k => [k, null]));
       if (kidIds.length > 0) {
-        const scoreResults = await Promise.all(
-          kidIds.map(kid =>
-            supabase.from("emotional_scores")
-              .select("score,risk_level,created_at,explanation")
-              .eq("child_id", kid)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle()
-              .then(({ data }) => ({ kid, data }))
-          )
-        );
-        for (const { kid, data } of scoreResults) {
-          map[kid] = data as any ?? null;
+        const { data: allScores } = await supabase
+          .from("emotional_scores")
+          .select("child_id,score,risk_level,created_at,explanation")
+          .in("child_id", kidIds)
+          .order("created_at", { ascending: false });
+        // Keep only the most recent score per child (rows are already sorted desc)
+        for (const row of (allScores ?? [])) {
+          if (map[row.child_id] === null) map[row.child_id] = row as Score;
         }
       }
       setLatest(map);
@@ -95,6 +91,7 @@ const Dashboard = () => {
 
   // Realtime: actualiza badge de alertas y last_ingest_at
   useEffect(() => {
+    if (!user) return;
     const channel = supabase
       .channel("dashboard-rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "alerts" }, async () => {
