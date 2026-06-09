@@ -19,6 +19,13 @@ const LIMITS: Record<Plan, PlanLimits> = {
   premium: { maxChildren: Infinity, historyDays: Infinity, aiAnalysis: true,  alerts: "full",   rules: true,  pdfReports: true  },
 };
 
+async function fetchPlan(userId: string, setPlan: (p: Plan) => void, setLoading: (v: boolean) => void) {
+  const { data } = await supabase.from("subscriptions").select("plan, status").eq("user_id", userId).maybeSingle();
+  const p = (data?.status === "active" ? data?.plan : "free") as Plan;
+  setPlan(LIMITS[p] ? p : "free");
+  setLoading(false);
+}
+
 export function useSubscription() {
   const { user } = useAuth();
   const [plan, setPlan] = useState<Plan>("free");
@@ -26,16 +33,17 @@ export function useSubscription() {
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
-    supabase
-      .from("subscriptions")
-      .select("plan, status")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        const p = (data?.status === "active" ? data?.plan : "free") as Plan;
-        setPlan(LIMITS[p] ? p : "free");
-        setLoading(false);
-      });
+    fetchPlan(user.id, setPlan, setLoading);
+
+    // Realtime: actualizar plan automáticamente cuando el webhook de Stripe actualice la DB
+    const channel = supabase
+      .channel(`sub-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions", filter: `user_id=eq.${user.id}` },
+        () => fetchPlan(user.id, setPlan, setLoading)
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   return { plan, limits: LIMITS[plan], loading };

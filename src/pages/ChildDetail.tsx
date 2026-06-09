@@ -75,7 +75,7 @@ const ChildDetail = () => {
     } finally {
       loadingRef.current = false;
     }
-  }, [id]);
+  }, [id, limits.historyDays]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -139,6 +139,7 @@ const ChildDetail = () => {
   const [aiDeep, setAiDeep] = useState<any>(null);
 
   const analyze = async () => {
+    if (!limits.aiAnalysis) return; // plan free/basic: no IA
     setAnalyzing(true);
     try {
       const last = metrics[0] ?? { total_minutes: 0, night_minutes: 0, sessions: 0, dominant_app: null, app_breakdown: null, metric_date: new Date().toISOString().slice(0, 10) };

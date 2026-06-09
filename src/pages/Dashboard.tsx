@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,11 +43,25 @@ function LiveDot({ active }: { active: boolean }) {
 const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [children, setChildren] = useState<Child[]>([]);
   const [latest, setLatest] = useState<Record<string, Score | null>>({});
   const [alertsCount, setAlertsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deviceModal, setDeviceModal] = useState<Child | null>(null);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+
+  // Detectar ?checkout=success tras pago en Stripe
+  useEffect(() => {
+    if (searchParams.get("checkout") === "success") {
+      setCheckoutSuccess(true);
+      // Limpiar param de URL sin recargar
+      const next = new URLSearchParams(searchParams);
+      next.delete("checkout");
+      next.delete("plan");
+      setSearchParams(next, { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -121,6 +136,17 @@ const Dashboard = () => {
           </div>
           <Link to="/children"><Button><Plus className="h-4 w-4 mr-2" /> {t("dashboard.addChild")}</Button></Link>
         </div>
+
+        {/* Banner éxito tras checkout de Stripe */}
+        {checkoutSuccess && (
+          <Card className="p-4 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 flex items-center gap-3">
+            <span className="text-2xl">🎉</span>
+            <div>
+              <div className="font-semibold text-emerald-800 dark:text-emerald-300">¡Plan activado con éxito!</div>
+              <div className="text-sm text-emerald-700 dark:text-emerald-400">Tu nueva suscripción ya está activa. Todas las funciones premium están disponibles.</div>
+            </div>
+          </Card>
+        )}
 
         {/* NSK value prop banner — sólo cuando hay hijos */}
         {children.length > 0 && (
