@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "NeuroShield Kids <alertas@neuroshieldkids.com>",
+        from: "NeuroShield Kids <onboarding@resend.dev>",
         to: [parentEmail],
         subject: `[NSK] Alerta ${severityLabel} — ${childName}`,
         html,
