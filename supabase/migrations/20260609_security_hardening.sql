@@ -98,3 +98,28 @@ BEGIN
   END IF;
 EXCEPTION WHEN OTHERS THEN NULL;
 END$$;
+
+-- ── 8. fn_notify_alert: usar NOTIFY_ALERT_SECRET en lugar de JWT ──
+-- El trigger envía x-webhook-secret en vez del service_role key.
+-- Valor del secret se configura vía Supabase Edge Function secrets.
+CREATE OR REPLACE FUNCTION fn_notify_alert() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_secret TEXT;
+BEGIN
+  -- Leer secret desde app_settings si está disponible, si no usar valor hardcoded de emergencia
+  SELECT value INTO v_secret FROM public.app_settings WHERE key='notify_alert_secret' LIMIT 1;
+  PERFORM net.http_post(
+    url := 'https://lqvgspmjfkfdurdnejzs.supabase.co/functions/v1/notify-alert',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-webhook-secret', COALESCE(v_secret, 'e78ab5c5d16053c5c291fcf5958bea16a62c34b009bd591ff497accc67861e89')
+    ),
+    body := jsonb_build_object(
+      'type', 'INSERT',
+      'table', 'alerts',
+      'schema', 'public',
+      'record', row_to_json(NEW)
+    )::text
+  );
+  RETURN NEW;
+END;
+$$;
