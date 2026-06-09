@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Bell, CreditCard, BookOpen, LogOut, Shield, Smartphone, Trophy } from "lucide-react";
+import { LayoutDashboard, Users, Bell, CreditCard, BookOpen, LogOut, Shield, Smartphone, Trophy, UserCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
@@ -42,6 +42,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
     { to: "/quests", icon: Trophy, label: t("nav.quests") },
     { to: "/learn", icon: BookOpen, label: t("nav.learn") },
     { to: "/pricing", icon: CreditCard, label: t("nav.pricing") },
+    { to: "/account", icon: UserCircle, label: t("nav.account", "Mi cuenta") },
   ];
 
   return (

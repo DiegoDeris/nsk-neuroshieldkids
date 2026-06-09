@@ -159,6 +159,30 @@ async function evaluateRules(
   }
 }
 
+// ── Rate limiting por token (en memoria, ventana deslizante 1 minuto) ────────
+// Máx 20 batches por minuto por token para prevenir abuso
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 20;
+const rateMap = new Map<string, { count: number; windowStart: number }>();
+
+function checkRateLimit(token: string): boolean {
+  const now = Date.now();
+  const entry = rateMap.get(token);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateMap.set(token, { count: 1, windowStart: now });
+    // Limpiar entradas antiguas periódicamente
+    if (rateMap.size > 1000) {
+      for (const [k, v] of rateMap.entries()) {
+        if (now - v.windowStart > RATE_LIMIT_WINDOW_MS * 2) rateMap.delete(k);
+      }
+    }
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -170,6 +194,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const body = (() => { try { return JSON.parse(rawText); } catch { return {}; } })();
     const token = String(body.token ?? "").trim();
     const evtsRaw: unknown[] = Array.isArray(body.events) ? body.events : [];
+
+    // Rate limiting — verificar antes de procesar
+    if (token && !checkRateLimit(token)) {
+      return json({ error: "rate limit exceeded — max 20 batches per minute" }, 429);
+    }
 
     if (!token || token.length < 16 || token.length > 128) {
       return json({ error: "token requerido" }, 401);

@@ -10,9 +10,35 @@ function sbHeaders(extra: Record<string, string> = {}) {
   return { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal", ...extra };
 }
 
-// Idempotency: track processed Stripe event IDs in-memory (survives retries within same instance)
-// and persist to DB via the stripe_event_id column on subscriptions.
+// Idempotency: in-memory dedup (fast path) + DB persist (survives restarts)
 const processedEvents = new Set<string>();
+
+async function isEventProcessed(eventId: string): Promise<boolean> {
+  if (processedEvents.has(eventId)) return true;
+  // Check DB
+  const r = await fetch(`${SB_URL}/rest/v1/processed_stripe_events?event_id=eq.${encodeURIComponent(eventId)}&select=event_id&limit=1`, {
+    headers: sbHeaders({ "Prefer": "" }),
+  });
+  if (r.ok) {
+    const rows = await r.json() as Array<{ event_id: string }>;
+    return rows.length > 0;
+  }
+  return false;
+}
+
+async function markEventProcessed(eventId: string): Promise<void> {
+  processedEvents.add(eventId);
+  if (processedEvents.size > 500) {
+    const first = processedEvents.values().next().value;
+    if (first) processedEvents.delete(first);
+  }
+  // Persist to DB
+  await fetch(`${SB_URL}/rest/v1/processed_stripe_events`, {
+    method: "POST",
+    headers: sbHeaders({ "Prefer": "resolution=ignore-duplicates,return=minimal" }),
+    body: JSON.stringify({ event_id: eventId }),
+  });
+}
 
 async function upsertSub(userId: string, data: Record<string, unknown>) {
   // Single atomic upsert — requires user_id unique constraint on subscriptions table
@@ -37,15 +63,9 @@ Deno.serve(async (req) => {
     return new Response(`webhook error: ${e}`, { status: 400 });
   }
 
-  // Idempotency: skip already-processed events (in-memory dedup for retries)
-  if (processedEvents.has(event.id)) {
+  // Idempotency: check in-memory + DB
+  if (await isEventProcessed(event.id)) {
     return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200, headers: { "Content-Type": "application/json" } });
-  }
-  processedEvents.add(event.id);
-  // Trim set to avoid unbounded growth in long-running instances
-  if (processedEvents.size > 500) {
-    const first = processedEvents.values().next().value;
-    if (first) processedEvents.delete(first);
   }
 
   try {
@@ -105,6 +125,7 @@ Deno.serve(async (req) => {
       await upsertSub(userId, { status: "past_due" });
     }
 
+    await markEventProcessed(event.id);
     return new Response(JSON.stringify({ received: true }), { status: 200, headers: { "Content-Type": "application/json" } });
   } catch (e) {
     console.error("webhook handler error:", e);

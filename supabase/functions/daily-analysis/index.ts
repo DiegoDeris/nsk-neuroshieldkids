@@ -79,6 +79,19 @@ function computeHeuristic(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Verificar CRON_SECRET para prevenir invocaciones no autorizadas
+  const CRON_SECRET = Deno.env.get("CRON_SECRET");
+  if (CRON_SECRET) {
+    const authHeader = req.headers.get("authorization") ?? "";
+    const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+    if (provided !== CRON_SECRET) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+  }
+
   try {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
@@ -168,7 +181,7 @@ Deno.serve(async (req) => {
           signal: aiCtrl.signal,
           headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.0-flash",
             messages: [
               { role: "system", content: "Eres asistente de bienestar digital infantil para padres. NO diagnosticas. Español, empático, preventivo, basado en evidencia." },
               { role: "user", content: `Niño/a: ${child.name}, ${child.age} años.\nMétricas ${day}: total ${metric.total_minutes}min, nocturno ${metric.night_minutes}min, sesiones ${metric.sessions}, app dominante ${metric.dominant_app ?? "n/d"}, reparto ${JSON.stringify(metric.app_breakdown ?? {})}.\nHeurística: ${heuristic.score} (${heuristic.risk_level}). Factores: ${heuristic.factors.map((f: any) => f.label).join("; ") || "ninguno"}.\nHistórico 14 días: ${JSON.stringify(historyCompact)}` },

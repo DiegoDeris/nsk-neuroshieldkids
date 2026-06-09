@@ -80,7 +80,6 @@ serve(async (req) => {
       child_id: tokenRow.child_id,
       child_name: child?.name ?? null,
       ingest_token: ingestToken,
-      supabase_url: Deno.env.get("SUPABASE_URL"),
     });
   } catch (err: any) {
     return json({ error: err.message }, 500);

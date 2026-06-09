@@ -180,8 +180,13 @@ const Landing = () => {
         </div>
       </section>
 
-      <footer className="container py-10 text-center text-sm text-muted-foreground">
-        {t("landing.footer", { year: new Date().getFullYear() })}
+      <footer className="container py-10 text-center text-sm text-muted-foreground space-y-1">
+        <p>{t("landing.footer", { year: new Date().getFullYear() })}</p>
+        <p>
+          <Link to="/privacy" className="hover:underline">Política de privacidad</Link>
+          {" · "}
+          <a href="mailto:privacidad@nsk.app" className="hover:underline">privacidad@nsk.app</a>
+        </p>
       </footer>
     </div>
   );

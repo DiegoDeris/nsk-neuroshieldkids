@@ -10,6 +10,8 @@ const CORS = {
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY");
+// Secret compartido configurado en el Database Webhook de Supabase (header X-Webhook-Secret)
+const WEBHOOK_SECRET = Deno.env.get("NOTIFY_ALERT_SECRET");
 
 function sbHeaders() {
   return { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
@@ -17,6 +19,15 @@ function sbHeaders() {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+
+  // Verificar que el caller es el webhook interno de Supabase
+  if (WEBHOOK_SECRET) {
+    const callerSecret = req.headers.get("x-webhook-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "");
+    if (callerSecret !== WEBHOOK_SECRET) {
+      console.warn("notify-alert: unauthorized caller");
+      return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+  }
 
   try {
     if (!RESEND_KEY) {

@@ -22,6 +22,8 @@ import Connect from "./pages/Connect";
 import Install from "./pages/Install";
 import InstallToken from "./pages/InstallToken";
 import Monitor from "./pages/Monitor";
+import Account from "./pages/Account";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 
 class ErrorBoundary extends React.Component<
@@ -83,6 +85,8 @@ const App = () => (
             <Route path="/quests" element={<ProtectedRoute><Quests /></ProtectedRoute>} />
             <Route path="/learn" element={<ProtectedRoute><Learn /></ProtectedRoute>} />
             <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+            <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </ErrorBoundary>

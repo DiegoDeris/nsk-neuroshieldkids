@@ -59,7 +59,7 @@ Diseña el plan semanal.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.5-flash",
+          model: "gemini-2.0-flash",
         messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
         tools: [{ type: "function", function: {
           name: "emit_prevention_plan",
