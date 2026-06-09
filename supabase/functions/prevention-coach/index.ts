@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
       admin.from("predictions").select("*").eq("child_id", child_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY missing");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
 
     const sys = `Eres coach de bienestar digital infantil para padres. NO diagnosticas. Diseña un plan SEMANAL ultra-concreto, basado en hábitos pequeños y medibles. Idioma: español, cercano y sin jerga. Cada acción debe ser observable y medible (ej: "móvil fuera del cuarto a las 22:00, 5/7 noches").`;
     const usr = `Perfil: ${child.name}, ${child.age} años.
@@ -51,17 +51,15 @@ Diseña el plan semanal.`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
       try {
-      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         signal: controller.signal,
         headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://nsk-neuroshieldkids.vercel.app",
-          "X-Title": "NSK NeuroShield Kids",
         },
         body: JSON.stringify({
-          model: "openai/gpt-oss-120b:free",
+          model: "gemini-2.5-flash",
         messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
         tools: [{ type: "function", function: {
           name: "emit_prevention_plan",

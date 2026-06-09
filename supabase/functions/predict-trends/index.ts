@@ -32,8 +32,8 @@ Deno.serve(async (req) => {
     const { data: metrics } = await admin.from("usage_metrics").select("*").eq("child_id", child_id).order("metric_date", { ascending: false }).limit(30);
     const { data: scores } = await admin.from("emotional_scores").select("score,risk_level,patterns,created_at").eq("child_id", child_id).order("created_at", { ascending: false }).limit(30);
 
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY missing");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
 
     const sys = `Eres analista senior de bienestar digital infantil. NO diagnosticas. Predices trayectorias usando los datos de uso digital y los scores históricos. Español, claro, accionable, basado en evidencia. Devuelve siempre intervalos de confianza (lo + bajo, esperado, lo + alto) y dos escenarios: con plan de prevención aplicado y sin intervención.`;
     const usr = `Niño/a: ${child.name}, ${child.age} años.
@@ -47,17 +47,15 @@ Predice horizontes 3, 7 y 30 días. Identifica 3 indicadores tempranos a vigilar
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
       try {
-      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         signal: controller.signal,
         headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://nsk-neuroshieldkids.vercel.app",
-          "X-Title": "NSK NeuroShield Kids",
         },
         body: JSON.stringify({
-          model: "openai/gpt-oss-120b:free",
+          model: "gemini-2.5-flash",
           messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
           tools: [{ type: "function", function: {
             name: "emit_prediction",

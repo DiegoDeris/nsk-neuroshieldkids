@@ -34,8 +34,8 @@ Deno.serve(async (req) => {
     // ───────────────────────────────────────────────────────────────────────
 
     const { child, metric, heuristic, history } = await req.json();
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const lang = (child?.lang ?? "es").toString().startsWith("en") ? "en" : "es";
 
@@ -85,17 +85,15 @@ IMPORTANTE: Las señales conductuales son la fuente primaria de inferencia cuand
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
       try {
-      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         signal: controller.signal,
         headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${Deno.env.get("GEMINI_API_KEY")}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://nsk-neuroshieldkids.vercel.app",
-          "X-Title": "NSK NeuroShield Kids",
         },
         body: JSON.stringify({
-          model: "openai/gpt-oss-120b:free",
+          model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
