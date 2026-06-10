@@ -51,15 +51,23 @@ const Dashboard = () => {
   const [deviceModal, setDeviceModal] = useState<Child | null>(null);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
-  // Detectar ?checkout=success tras pago en Stripe
+  // Detectar ?checkout=success tras pago en Stripe — sincronizar suscripción inmediatamente
   useEffect(() => {
-    if (searchParams.get("checkout") === "success") {
-      setCheckoutSuccess(true);
-      // Limpiar param de URL sin recargar
-      const next = new URLSearchParams(searchParams);
-      next.delete("checkout");
-      next.delete("plan");
-      setSearchParams(next, { replace: true });
+    if (searchParams.get("checkout") !== "success") return;
+    const sessionId = searchParams.get("session_id");
+    setCheckoutSuccess(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("checkout");
+    next.delete("plan");
+    next.delete("session_id");
+    setSearchParams(next, { replace: true });
+
+    // Sync server-side: actualiza DB sin esperar al webhook
+    if (sessionId) {
+      supabase.functions.invoke("sync-subscription", { body: { session_id: sessionId } })
+        .then(({ error }) => {
+          if (error) console.warn("sync-subscription error (no crítico):", error.message);
+        });
     }
   }, []);
 
