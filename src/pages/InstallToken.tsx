@@ -4,7 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Download, Shield, CheckCircle2, AlertCircle, Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const APK_URL = "https://github.com/DiegoDeris/nsk-android/releases/latest/download/app-debug.apk";
+const APK_URL = import.meta.env.VITE_APK_URL ?? "https://github.com/DiegoDeris/nsk-android/releases/latest/download/app-debug.apk";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const VALIDATE_FN = `${SUPABASE_URL}/functions/v1/validate-install-token`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;

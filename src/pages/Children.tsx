@@ -107,7 +107,7 @@ const Children = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>{t("children.age")}</Label>
-                  <Input type="number" min={3} max={18} value={form.age}
+                  <Input type="number" required min={3} max={18} value={form.age}
                     onChange={e => setForm({ ...form, age: Number(e.target.value) })} />
                 </div>
                 <div className="space-y-2">
@@ -136,7 +136,7 @@ const Children = () => {
               </div>
               <div className="space-y-2">
                 <Label>{t("children.age")}</Label>
-                <Input type="number" min={3} max={18} value={editForm.age}
+                <Input type="number" required min={3} max={18} value={editForm.age}
                   onChange={e => setEditForm({ ...editForm, age: Number(e.target.value) })} />
               </div>
               <div className="space-y-2">

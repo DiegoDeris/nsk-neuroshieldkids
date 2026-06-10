@@ -37,37 +37,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 1. Borrar datos de usuario (cascada borra children → usage_events, etc.)
-    // Las tablas con FK a children tienen ON DELETE CASCADE
-    // Borramos directamente los hijos para garantizar cascada completa
-    const { data: children } = await admin
-      .from("children")
-      .select("id")
-      .eq("parent_id", userId);
-
-    if (children && children.length > 0) {
-      const childIds = children.map((c: any) => c.id);
-
-      // Borrar datos dependientes explícitamente (por si no hay cascada)
-      await admin.from("usage_events").delete().in("child_id", childIds);
-      await admin.from("usage_metrics").delete().in("child_id", childIds);
-      await admin.from("emotional_scores").delete().in("child_id", childIds);
-      await admin.from("recommendations").delete().in("child_id", childIds);
-      await admin.from("predictions").delete().in("child_id", childIds);
-      await admin.from("alerts").delete().in("child_id", childIds);
-      await admin.from("quests").delete().in("child_id", childIds);
-      await admin.from("rules").delete().in("child_id", childIds);
-      await admin.from("install_tokens").delete().in("child_id", childIds);
-      await admin.from("devices").delete().in("child_id", childIds);
-      await admin.from("children").delete().in("id", childIds);
-    }
-
-    // 2. Borrar datos del padre
-    await admin.from("gamification").delete().eq("parent_id", userId);
-    await admin.from("subscriptions").delete().eq("user_id", userId);
-    await admin.from("profiles").delete().eq("id", userId);
-
-    // 3. Borrar la cuenta de auth (irreversible)
+    // 1. Borrar la cuenta de auth (irreversible). Esto dispara ON DELETE CASCADE
+    // sobre profiles/children/subscriptions y, vía children, sobre usage_events,
+    // usage_metrics, emotional_scores, alerts, recommendations, predictions,
+    // gamification, devices e install_tokens. Si falla, no se ha borrado nada (atómico).
     const { error: deleteErr } = await admin.auth.admin.deleteUser(userId);
     if (deleteErr) {
       console.error("Error borrando usuario auth:", deleteErr);
@@ -75,6 +48,11 @@ Deno.serve(async (req) => {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
+
+    // 2. Limpieza best-effort: "rules" y "quests" referencian parent_id/child_id
+    // sin FK CASCADE, así que no se borran automáticamente con el usuario.
+    await admin.from("rules").delete().eq("parent_id", userId);
+    await admin.from("quests").delete().eq("parent_id", userId);
 
     return new Response(JSON.stringify({ ok: true, message: "Cuenta y todos los datos eliminados correctamente" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }

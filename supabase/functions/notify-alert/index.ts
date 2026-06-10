@@ -38,7 +38,13 @@ Deno.serve(async (req) => {
     const body = await req.json();
     // Webhook de Supabase envía { type, table, record, old_record, schema }
     const record = body.record ?? body;
+    if (!record || typeof record !== "object") {
+      return new Response(JSON.stringify({ error: "record requerido" }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
     const { child_id, parent_id, severity, title, message } = record;
+    if (!child_id || !parent_id || !severity || !title || !message) {
+      return new Response(JSON.stringify({ error: "faltan campos requeridos: child_id, parent_id, severity, title, message" }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
 
     // Solo notificar alertas críticas y moderadas
     if (!["critical", "moderate"].includes(severity)) {
@@ -46,19 +52,21 @@ Deno.serve(async (req) => {
     }
 
     // Obtener email del padre
-    const profileRes = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${parent_id}&select=email,full_name&limit=1`, { headers: sbHeaders() });
-    const profiles = await profileRes.json();
-    const parentEmail = profiles[0]?.email;
-    const parentName = profiles[0]?.full_name ?? "Padre/Madre";
+    const profiles = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${parent_id}&select=email,full_name&limit=1`, { headers: sbHeaders() })
+      .then(r => r.json())
+      .catch(() => null);
+    const parentEmail = profiles?.[0]?.email;
+    const parentName = profiles?.[0]?.full_name ?? "Padre/Madre";
     if (!parentEmail) {
       console.warn("No email found for parent", parent_id);
       return new Response(JSON.stringify({ ok: true, skipped: "no email" }), { headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     // Obtener nombre del hijo
-    const childRes = await fetch(`${SB_URL}/rest/v1/children?id=eq.${child_id}&select=name&limit=1`, { headers: sbHeaders() });
-    const children = await childRes.json();
-    const childName = children[0]?.name ?? "tu hijo/a";
+    const children = await fetch(`${SB_URL}/rest/v1/children?id=eq.${child_id}&select=name&limit=1`, { headers: sbHeaders() })
+      .then(r => r.json())
+      .catch(() => null);
+    const childName = children?.[0]?.name ?? "tu hijo/a";
 
     const severityLabel = severity === "critical" ? "🔴 CRÍTICA" : "🟠 MODERADA";
     const html = `
@@ -78,24 +86,37 @@ Deno.serve(async (req) => {
   </div>
 </div>`;
 
-    const emailRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "NeuroShield Kids <onboarding@resend.dev>",
-        to: [parentEmail],
-        subject: `[NSK] Alerta ${severityLabel} — ${childName}`,
-        html,
-      }),
+    const fromAddress = Deno.env.get("FROM_EMAIL") ?? "NeuroShield Kids <onboarding@resend.dev>";
+    const emailBody = JSON.stringify({
+      from: fromAddress,
+      to: [parentEmail],
+      subject: `[NSK] Alerta ${severityLabel} — ${childName}`,
+      html,
     });
 
-    if (!emailRes.ok) {
-      const err = await emailRes.text();
-      console.error("Resend error:", emailRes.status, err);
-      return new Response(JSON.stringify({ ok: false, error: err }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
+    // Reintento con backoff exponencial: hasta 3 intentos (0ms, 500ms, 1500ms)
+    const RETRY_DELAYS_MS = [0, 500, 1500];
+    let lastErr = "";
+    for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+      if (RETRY_DELAYS_MS[attempt] > 0) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+      }
+      const emailRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
+        body: emailBody,
+      });
+
+      if (emailRes.ok) {
+        return new Response(JSON.stringify({ ok: true, sent_to: parentEmail }), { headers: { ...CORS, "Content-Type": "application/json" } });
+      }
+
+      lastErr = await emailRes.text();
+      console.warn(`Resend attempt ${attempt + 1} failed:`, emailRes.status, lastErr);
     }
 
-    return new Response(JSON.stringify({ ok: true, sent_to: parentEmail }), { headers: { ...CORS, "Content-Type": "application/json" } });
+    console.error("Resend error after retries:", lastErr);
+    return new Response(JSON.stringify({ ok: false, error: lastErr }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("notify-alert error:", e);
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Shield, Wifi, WifiOff } from "lucide-react";
 
-const INGEST_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co/functions/v1/ingest-usage";
+const INGEST_URL = import.meta.env.VITE_INGEST_URL ?? "https://lqvgspmjfkfdurdnejzs.supabase.co/functions/v1/ingest-usage";
 const INTERVAL_MS = 60 * 1000; // 1 minuto mientras está en primer plano
 const DB_NAME = "nsk-monitor";
 const DB_VERSION = 1;
@@ -112,6 +112,8 @@ export default function Monitor() {
   const sessionStart = useRef(Date.now());
   const batteryStart = useRef<number | null>(null);
   const wakeLock = useRef<any>(null);
+  // Si el token resulta inválido (401/403), dejamos de intentar enviar
+  const tokenInvalid = useRef(false);
 
   // ── Detectar si ya instalada como PWA ──
   useEffect(() => {
@@ -192,8 +194,8 @@ export default function Monitor() {
   // ── sendBeacon en pagehide y visibilitychange→hidden (iOS) ──
   useEffect(() => {
     if (!token || token.length < 16) return;
-    const onHide = () => beaconEvent(token);
-    const onVisHidden = () => { if (document.visibilityState === "hidden") beaconEvent(token); };
+    const onHide = () => { if (!tokenInvalid.current) beaconEvent(token); };
+    const onVisHidden = () => { if (document.visibilityState === "hidden" && !tokenInvalid.current) beaconEvent(token); };
     window.addEventListener("pagehide", onHide);
     document.addEventListener("visibilitychange", onVisHidden);
     return () => {
@@ -206,6 +208,7 @@ export default function Monitor() {
   const sendEvent = async () => {
     if (!token || token.length < 16) return;
     if (!navigator.onLine) return;
+    if (tokenInvalid.current) return;
 
     const now = new Date();
     const hour = now.getHours();
@@ -266,6 +269,9 @@ export default function Monitor() {
       } else {
         let errMsg = `HTTP ${res.status}`;
         try { const j = await res.json(); errMsg += `: ${j.error ?? JSON.stringify(j)}`; } catch {}
+        if (res.status === 401 || res.status === 403) {
+          tokenInvalid.current = true;
+        }
         setStatus("error");
         setLastError(errMsg);
       }

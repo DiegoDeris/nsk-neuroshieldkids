@@ -40,6 +40,24 @@ async function markEventProcessed(eventId: string): Promise<void> {
   });
 }
 
+async function recordFailedWebhook(event: Stripe.Event, error: unknown): Promise<void> {
+  try {
+    await fetch(`${SB_URL}/rest/v1/failed_webhooks`, {
+      method: "POST",
+      headers: sbHeaders({ "Prefer": "return=minimal" }),
+      body: JSON.stringify({
+        provider: "stripe",
+        event_id: event.id,
+        event_type: event.type,
+        payload: event,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    });
+  } catch (logErr) {
+    console.error("No se pudo registrar failed_webhooks:", logErr);
+  }
+}
+
 async function upsertSub(userId: string, data: Record<string, unknown>) {
   // Single atomic upsert — requires user_id unique constraint on subscriptions table
   const r = await fetch(`${SB_URL}/rest/v1/subscriptions`, {
@@ -129,6 +147,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ received: true }), { status: 200, headers: { "Content-Type": "application/json" } });
   } catch (e) {
     console.error("webhook handler error:", e);
+    await recordFailedWebhook(event, e);
     return new Response(String(e), { status: 500 });
   }
 });

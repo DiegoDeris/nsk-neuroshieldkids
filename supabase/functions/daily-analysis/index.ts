@@ -135,6 +135,7 @@ Deno.serve(async (req) => {
     }
 
     const results: any[] = [];
+    let failureCount = 0;
 
     for (const cid of childIds) {
       try {
@@ -250,10 +251,54 @@ Deno.serve(async (req) => {
         results.push({ child_id: cid, score: args.emotional_score, risk: args.risk_level });
       } catch (childErr) {
         console.error(`Error procesando hijo ${cid}:`, childErr);
+        failureCount++;
+        try {
+          const { data: childRow } = await admin.from("children").select("parent_id").eq("id", cid).maybeSingle();
+          await admin.from("cron_failures").insert([{
+            job_name: "daily-analysis",
+            error: childErr instanceof Error ? childErr.message : String(childErr),
+            context: { child_id: cid, parent_id: childRow?.parent_id ?? null, day },
+          }]);
+        } catch (logErr) {
+          console.error("No se pudo registrar cron_failures:", logErr);
+        }
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, day, processed: results.length, results }), {
+    // Alerta al operador si la tasa de fallo supera el umbral
+    const totalProcessed = childIds.length;
+    const FAILURE_RATE_THRESHOLD = 0.2;
+    if (totalProcessed > 0 && (failureCount / totalProcessed) > FAILURE_RATE_THRESHOLD) {
+      try {
+        const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+        if (RESEND_API_KEY) {
+          const fromAddress = Deno.env.get("FROM_EMAIL") ?? "NeuroShield Kids <onboarding@resend.dev>";
+          const rate = ((failureCount / totalProcessed) * 100).toFixed(1);
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: fromAddress,
+              to: "deriscars10@gmail.com",
+              subject: "⚠️ daily-analysis: tasa de fallo elevada",
+              html: `<p>El cron <strong>daily-analysis</strong> (${day}) registró una tasa de fallo elevada.</p>
+<ul>
+  <li>Fallos: ${failureCount}</li>
+  <li>Total procesados: ${totalProcessed}</li>
+  <li>Tasa: ${rate}%</li>
+  <li>Timestamp: ${new Date().toISOString()}</li>
+</ul>`,
+            }),
+          });
+        } else {
+          console.warn("RESEND_API_KEY no configurada — alerta de tasa de fallo omitida");
+        }
+      } catch (alertErr) {
+        console.error("Error enviando alerta de tasa de fallo:", alertErr);
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, day, processed: results.length, failures: failureCount, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

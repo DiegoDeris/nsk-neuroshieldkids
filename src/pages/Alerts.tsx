@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -23,18 +24,28 @@ const Alerts = () => {
   const { t, i18n } = useTranslation();
   const [list, setList] = useState<any[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [markingId, setMarkingId] = useState<string | null>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("alerts")
+    const { data, error } = await supabase.from("alerts")
       .select("*, children(name, avatar_emoji)")
       .order("created_at", { ascending: false });
+    if (error) { toast.error(error.message); return; }
     setList(data ?? []);
   };
   useEffect(() => { load(); }, []);
 
   const markRead = async (id: string) => {
-    await supabase.from("alerts").update({ read: true }).eq("id", id);
-    load();
+    setMarkingId(id);
+    try {
+      const { error } = await supabase.from("alerts").update({ read: true }).eq("id", id);
+      if (error) throw error;
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? t("alerts.title"));
+    } finally {
+      setMarkingId(null);
+    }
   };
 
   const sevColor: Record<Sev, any> = { critical: "destructive", moderate: "default", preventive: "secondary" };
@@ -183,7 +194,7 @@ const Alerts = () => {
                   )}
                 </div>
                 {!a.read && (
-                  <Button size="sm" variant="ghost" onClick={() => markRead(a.id)} title={t("alerts.markRead")}>
+                  <Button size="sm" variant="ghost" onClick={() => markRead(a.id)} disabled={markingId === a.id} title={t("alerts.markRead")}>
                     <BellOff className="h-4 w-4" />
                   </Button>
                 )}

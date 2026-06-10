@@ -1,6 +1,7 @@
 {
   "common": {
     "loading": "Loading…",
+    "loadError": "Could not load data. Please try again.",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -69,9 +70,15 @@
     "privacy":    { "title": "No spyware — GDPR",           "text": "Only usage metadata: time, sessions, schedule, behaviour. Never messages, photos or private content." }
   },
   "plans": {
-    "free": { "name": "Free", "period": "forever", "cta": "Start free", "current": "Your current plan", "p1": "1 free AI analysis", "p2": "1 child", "p3": "Basic dashboard" },
-    "basic": { "name": "Basic", "period": "/month", "cta": "Choose Basic", "ctaStart": "Start Basic", "p1": "Unlimited AI analyses", "p2": "Up to 3 kids", "p3": "Full dashboard", "p4": "Real-time alerts" },
-    "premium": { "name": "Premium", "period": "/month", "cta": "Choose Premium", "ctaStart": "Start Premium", "p1": "Everything in Basic", "p2": "Unlimited kids", "p3": "Full gamification", "p4": "PDF reports", "p5": "Advanced alerts", "p6": "Priority support" },
+    "free": { "name": "Free", "period": "forever", "cta": "Start free", "current": "Your current plan",
+      "p1": "1 child", "p2": "3-day history", "p3": "Weekly score without explanation", "p4": "Alerts: count and severity" },
+    "basic": { "name": "Basic", "period": "/month", "cta": "Choose Basic", "ctaStart": "Start Basic",
+      "p1": "Up to 3 kids", "p2": "30-day history", "p3": "Daily score with explanation", "p4": "Full alert details", "p5": "Schedule and limit rules", "p6": "Standard support" },
+    "premium": { "name": "Premium", "period": "/month", "cta": "Choose Premium", "ctaStart": "Start Premium",
+      "p1": "Unlimited kids", "p2": "Unlimited history", "p3": "Daily score + AI prediction", "p4": "Predictive alerts", "p5": "Actionable AI recommendations", "p6": "PDF reports", "p7": "Advanced rules", "p8": "Priority support" },
+    "annualSave": "Save {{months}} months",
+    "monthly": "Monthly",
+    "annual": "Annual",
     "stripeNotice": "Payments will be enabled when we connect Stripe in the next step."
   },
   "pricing": {
@@ -109,7 +116,17 @@
     "emailAlreadyRegistered": "That email is already registered. Sign in or use another email.",
     "invalidCredentials": "Incorrect email or password.",
     "emailNotConfirmed": "Check your email and confirm your account before signing in.",
-    "nameMin": "Enter your name (min 2 characters)"
+    "nameMin": "Enter your name (min 2 characters)",
+    "forgotPassword": "Forgot your password?",
+    "resetEmailSent": "Check your email to reset your password.",
+    "newPasswordTitle": "New password",
+    "newPasswordSubtitle": "Choose a new password for your account.",
+    "newPasswordLabel": "New password",
+    "saving": "Saving…",
+    "savePassword": "Save password",
+    "passwordUpdated": "Password updated!",
+    "recoveryInvalid": "This password reset link is invalid or has expired. Request a new one to continue.",
+    "recoveryInvalidToast": "Invalid or expired reset link. Please request a new one."
   },
   "dashboard": {
     "hello": "Hi 👋",

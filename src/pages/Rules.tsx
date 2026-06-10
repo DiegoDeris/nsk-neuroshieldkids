@@ -32,6 +32,9 @@ const Rules = () => {
   const [rules, setRules] = useState<Rule[]>([]);
   const [children, setChildren] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>({
     name: "", rule_type: "daily_time_limit", child_id: "all", severity: "moderate",
     cooldown_minutes: 60,
@@ -40,12 +43,18 @@ const Rules = () => {
   });
 
   const load = async () => {
-    const [{ data: r }, { data: c }] = await Promise.all([
-      supabase.from("rules").select("*").order("created_at", { ascending: false }),
-      supabase.from("children").select("id,name,avatar_emoji"),
-    ]);
-    setRules((r as any) ?? []);
-    setChildren(c ?? []);
+    try {
+      const [{ data: r, error: rErr }, { data: c, error: cErr }] = await Promise.all([
+        supabase.from("rules").select("*").order("created_at", { ascending: false }),
+        supabase.from("children").select("id,name,avatar_emoji"),
+      ]);
+      if (rErr) throw rErr;
+      if (cErr) throw cErr;
+      setRules((r as any) ?? []);
+      setChildren(c ?? []);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al cargar las reglas");
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -62,29 +71,52 @@ const Rules = () => {
 
   const create = async () => {
     if (!form.name.trim()) return toast.error("Pon un nombre a la regla");
-    const { error } = await supabase.from("rules").insert([{
-      parent_id: user!.id,
-      child_id: form.child_id === "all" ? null : form.child_id,
-      name: form.name.trim().slice(0, 80),
-      rule_type: form.rule_type,
-      config: buildConfig(),
-      severity: form.severity,
-      cooldown_minutes: Math.max(5, Math.min(1440, Number(form.cooldown_minutes))),
-    }]);
-    if (error) return toast.error(error.message);
-    toast.success("Regla creada");
-    setOpen(false);
-    load();
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from("rules").insert([{
+        parent_id: user!.id,
+        child_id: form.child_id === "all" ? null : form.child_id,
+        name: form.name.trim().slice(0, 80),
+        rule_type: form.rule_type,
+        config: buildConfig(),
+        severity: form.severity,
+        cooldown_minutes: Math.max(5, Math.min(1440, Number(form.cooldown_minutes))),
+      }]);
+      if (error) throw error;
+      toast.success("Regla creada");
+      setOpen(false);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al crear la regla");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggle = async (r: Rule) => {
-    await supabase.from("rules").update({ enabled: !r.enabled }).eq("id", r.id);
-    load();
+    setTogglingId(r.id);
+    try {
+      const { error } = await supabase.from("rules").update({ enabled: !r.enabled }).eq("id", r.id);
+      if (error) throw error;
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al actualizar la regla");
+    } finally {
+      setTogglingId(null);
+    }
   };
   const remove = async (id: string) => {
     if (!confirm("¿Borrar regla?")) return;
-    await supabase.from("rules").delete().eq("id", id);
-    load();
+    setRemovingId(id);
+    try {
+      const { error } = await supabase.from("rules").delete().eq("id", id);
+      if (error) throw error;
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al borrar la regla");
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   const sevColor: any = { critical: "destructive", moderate: "default", preventive: "secondary" };
@@ -172,7 +204,7 @@ const Rules = () => {
                 <div><Label>Cooldown (min)</Label>
                   <Input type="number" min={5} max={1440} value={form.cooldown_minutes} onChange={e => setForm({ ...form, cooldown_minutes: e.target.value })} /></div>
               </div>
-              <Button onClick={create} className="w-full">Crear regla</Button>
+              <Button onClick={create} className="w-full" disabled={isSaving}>{isSaving ? "Creando…" : "Crear regla"}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -203,8 +235,8 @@ const Rules = () => {
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">{T?.label} · {renderConfig(r)} · cooldown {r.cooldown_minutes}min</p>
               </div>
-              <Switch checked={r.enabled} onCheckedChange={() => toggle(r)} />
-              <Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+              <Switch checked={r.enabled} onCheckedChange={() => toggle(r)} disabled={togglingId === r.id} />
+              <Button size="icon" variant="ghost" onClick={() => remove(r.id)} disabled={removingId === r.id}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             </Card>
           );
         })}

@@ -10,17 +10,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function parseCSV(text: string): Record<string,string>[] {
+interface ParsedRow {
+  line: number; // número de línea en el CSV (1-based, incluyendo header)
+  cols: number; // cantidad de columnas encontradas en esta fila
+  row: Record<string, string>;
+}
+
+function parseCSV(text: string): { headers: string[]; rows: ParsedRow[] } {
   const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-  if (lines.length < 2) return [];
+  if (lines.length < 2) return { headers: [], rows: [] };
   const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/"/g, ""));
-  return lines.slice(1).map(line => {
+  const rows = lines.slice(1).map((line, idx) => {
     // simple CSV split (no campos con comas internas)
     const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
     const row: Record<string,string> = {};
     headers.forEach((h, i) => row[h] = cols[i] ?? "");
-    return row;
+    return { line: idx + 2, cols: cols.length, row };
   });
+  return { headers, rows };
 }
 
 Deno.serve(async (req) => {
@@ -52,31 +59,77 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Hijo no autorizado" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const rows = parseCSV(csv);
+    const { headers, rows } = parseCSV(csv);
     if (rows.length === 0 || rows.length > 5000) {
       return new Response(JSON.stringify({ error: "CSV vacío o >5000 filas" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const events = rows.map(r => {
+    const expectedCols = headers.length;
+    const MAX_AGE_MS = 2 * 365 * 24 * 60 * 60 * 1000; // ~2 años
+    const FUTURE_SLACK_MS = 5 * 60 * 1000; // pequeña tolerancia de reloj
+    const nowMs = Date.now();
+
+    const errors: Array<{ line: number; reason: string }> = [];
+    const events: Array<{
+      child_id: string;
+      parent_id: string;
+      occurred_at: string;
+      app_name: string | null;
+      duration_seconds: number;
+      event_type: "app_usage";
+      source: "csv";
+      metadata: Record<string, never>;
+    }> = [];
+
+    for (const { line, cols, row: r } of rows) {
+      // (a) número de columnas debe coincidir con el header
+      if (cols !== expectedCols) {
+        errors.push({ line, reason: `número de columnas inválido (esperado ${expectedCols}, recibido ${cols})` });
+        continue;
+      }
+
       const app = (r.app ?? r.app_name ?? r.application ?? "").slice(0, 80) || null;
       const minutes = Number(r.minutes ?? r.duration_minutes ?? 0);
       const seconds = Number(r.duration_seconds ?? (isFinite(minutes) ? minutes * 60 : 0));
-      const ts = r.timestamp || r.date || r.day;
+      const ts = r.timestamp || r.date || r.day || r.occurred_at;
       const occurred = ts ? new Date(ts) : new Date();
-      return {
+
+      if (!ts || isNaN(occurred.getTime())) {
+        errors.push({ line, reason: "timestamp/fecha inválido o ausente" });
+        continue;
+      }
+
+      // (b) timestamp dentro de un rango razonable: no futuro, no anterior a ~2 años
+      const occurredMs = occurred.getTime();
+      if (occurredMs > nowMs + FUTURE_SLACK_MS) {
+        errors.push({ line, reason: "timestamp en el futuro" });
+        continue;
+      }
+      if (occurredMs < nowMs - MAX_AGE_MS) {
+        errors.push({ line, reason: "timestamp anterior a 2 años" });
+        continue;
+      }
+
+      const durationSeconds = Math.max(0, Math.min(86400, seconds | 0));
+      if (durationSeconds <= 0) {
+        errors.push({ line, reason: "duration_seconds/minutes inválido o cero" });
+        continue;
+      }
+
+      events.push({
         child_id: child.id,
         parent_id: child.parent_id,
-        occurred_at: isNaN(occurred.getTime()) ? new Date().toISOString() : occurred.toISOString(),
+        occurred_at: occurred.toISOString(),
         app_name: app,
-        duration_seconds: Math.max(0, Math.min(86400, seconds | 0)),
-        event_type: "app_usage" as const,
-        source: "csv" as const,
+        duration_seconds: durationSeconds,
+        event_type: "app_usage",
+        source: "csv",
         metadata: {},
-      };
-    }).filter(e => e.duration_seconds > 0);
+      });
+    }
 
     if (events.length === 0) {
-      return new Response(JSON.stringify({ error: "No se encontraron filas válidas. Cabeceras esperadas: date,app,minutes" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "No se encontraron filas válidas. Cabeceras esperadas: date,app,minutes", skipped: errors }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Insertar en lotes
@@ -91,7 +144,7 @@ Deno.serve(async (req) => {
     }
     await admin.from("children").update({ last_ingest_at: new Date().toISOString() }).eq("id", child.id);
 
-    return new Response(JSON.stringify({ ok: true, ingested: events.length, days }), {
+    return new Response(JSON.stringify({ ok: true, ingested: events.length, days, skipped: errors, skipped_count: errors.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

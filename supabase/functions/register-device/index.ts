@@ -13,22 +13,37 @@ serve(async (req) => {
     const { install_token, device_info } = await req.json();
     if (!install_token) return json({ error: "install_token required" }, 400);
 
+    const fingerprint = typeof device_info?.fingerprint === "string" ? device_info.fingerprint.trim() : "";
+    if (!fingerprint) return json({ error: "device_info.fingerprint required" }, 400);
+
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Validate token
-    const { data: tokenRow, error: tokenErr } = await admin
+    // Validate token exists and is not expired
+    const { data: tokenCheck, error: tokenCheckErr } = await admin
       .from("install_tokens")
       .select("id, child_id, parent_id, expires_at, used_at, children(name, ingest_token)")
       .eq("token", install_token)
       .single();
 
-    if (tokenErr || !tokenRow) return json({ error: "Invalid token" }, 400);
-    if (tokenRow.used_at) return json({ error: "Token already used" }, 400);
-    if (new Date(tokenRow.expires_at) < new Date()) return json({ error: "Token expired" }, 400);
+    if (tokenCheckErr || !tokenCheck) return json({ error: "Invalid token" }, 401);
+    if (new Date(tokenCheck.expires_at) < new Date()) return json({ error: "Token expired" }, 410);
 
+    // Marcar el token como usado de forma atómica — si no devuelve fila,
+    // ya fue usado por otra request concurrente o ya no es válido.
+    const { data: claimed, error: claimErr } = await admin
+      .from("install_tokens")
+      .update({ used_at: new Date().toISOString() })
+      .eq("token", install_token)
+      .is("used_at", null)
+      .select("id, child_id, parent_id, expires_at, used_at, children(name, ingest_token)")
+      .single();
+
+    if (claimErr || !claimed) return json({ error: "Token already used" }, 410);
+
+    const tokenRow = claimed;
     const child = tokenRow.children as any;
     let ingestToken: string = child?.ingest_token;
 
@@ -43,31 +58,15 @@ serve(async (req) => {
         .eq("id", tokenRow.child_id);
     }
 
-    // Upsert device record
-    if (device_info?.fingerprint) {
-      await admin.from("devices").upsert({
-        child_id: tokenRow.child_id,
-        parent_id: tokenRow.parent_id,
-        device_model: device_info.model ?? null,
-        android_version: device_info.android_version ?? null,
-        device_fingerprint: device_info.fingerprint,
-        last_seen_at: new Date().toISOString(),
-      }, { onConflict: "device_fingerprint" });
-    } else {
-      await admin.from("devices").insert({
-        child_id: tokenRow.child_id,
-        parent_id: tokenRow.parent_id,
-        device_model: device_info?.model ?? null,
-        android_version: device_info?.android_version ?? null,
-        last_seen_at: new Date().toISOString(),
-      });
-    }
-
-    // Mark token as used
-    await admin
-      .from("install_tokens")
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", tokenRow.id);
+    // Upsert device record (device_fingerprint validado como no vacío arriba)
+    await admin.from("devices").upsert({
+      child_id: tokenRow.child_id,
+      parent_id: tokenRow.parent_id,
+      device_model: device_info?.model ?? null,
+      android_version: device_info?.android_version ?? null,
+      device_fingerprint: fingerprint,
+      last_seen_at: new Date().toISOString(),
+    }, { onConflict: "device_fingerprint" });
 
     // Update child last_ingest_at → triggers real-time in dashboard modal
     await admin

@@ -18,15 +18,25 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", full_name: "" });
   const [recovery, setRecovery] = useState(false);
+  const [recoveryValid, setRecoveryValid] = useState<boolean | null>(null);
   const [newPassword, setNewPassword] = useState("");
 
   // Detectar flujo de recuperación desde el hash de la URL
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.includes("type=recovery")) {
-      setRecovery(true);
-    }
-  }, []);
+    if (!hash.includes("type=recovery")) return;
+    setRecovery(true);
+
+    // Validar que el link de recuperación generó una sesión válida
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error || !data.session) {
+        setRecoveryValid(false);
+        toast.error(t("auth.recoveryInvalidToast"));
+      } else {
+        setRecoveryValid(true);
+      }
+    });
+  }, [t]);
 
   const translateAuthError = (message?: string) => {
     const normalized = (message ?? "").toLowerCase();
@@ -85,13 +95,26 @@ const Auth = () => {
 
   // Formulario de nueva contraseña (flujo recovery)
   if (recovery) {
+    if (recoveryValid === false) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="w-full max-w-sm space-y-6 text-center">
+            <div className="flex justify-center"><Logo /></div>
+            <p className="text-sm text-muted-foreground">{t("auth.recoveryInvalid")}</p>
+            <Button className="w-full" onClick={() => navigate("/auth", { replace: true })}>
+              {t("auth.backHome")}
+            </Button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="w-full max-w-sm space-y-6">
           <div className="flex justify-center"><Logo /></div>
           <div>
-            <h1 className="text-2xl font-bold">Nueva contraseña</h1>
-            <p className="text-sm text-muted-foreground mt-1">Elige una contraseña nueva para tu cuenta.</p>
+            <h1 className="text-2xl font-bold">{t("auth.newPasswordTitle")}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{t("auth.newPasswordSubtitle")}</p>
           </div>
           <form onSubmit={async (e) => {
             e.preventDefault();
@@ -100,16 +123,16 @@ const Auth = () => {
             const { error } = await supabase.auth.updateUser({ password: newPassword });
             setLoading(false);
             if (error) { toast.error(error.message); return; }
-            toast.success("¡Contraseña actualizada!");
+            toast.success(t("auth.passwordUpdated"));
             navigate("/dashboard");
           }} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-password">Nueva contraseña</Label>
-              <Input id="new-password" type="password" required minLength={8} placeholder="8 caracteres o más"
+              <Label htmlFor="new-password">{t("auth.newPasswordLabel")}</Label>
+              <Input id="new-password" type="password" required minLength={8} placeholder={t("auth.passwordHint")}
                 value={newPassword} onChange={e => setNewPassword(e.target.value)} />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Guardando…" : "Guardar contraseña"}
+              {loading ? t("auth.saving") : t("auth.savePassword")}
             </Button>
           </form>
         </div>
@@ -162,9 +185,9 @@ const Auth = () => {
                         redirectTo: `${window.location.origin}/auth?mode=signin`,
                       });
                       if (error) toast.error(error.message);
-                      else toast.success("Revisa tu email para restablecer tu contraseña.");
+                      else toast.success(t("auth.resetEmailSent"));
                     }}>
-                    ¿Olvidaste tu contraseña?
+                    {t("auth.forgotPassword")}
                   </button>
                 )}
               </div>

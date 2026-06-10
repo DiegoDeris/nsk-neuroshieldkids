@@ -35,18 +35,25 @@ const Quests = () => {
   const [quests, setQuests] = useState<any[]>([]);
   const [game, setGame] = useState<any>(null);
   const [custom, setCustom] = useState("");
+  const [addingPreset, setAddingPreset] = useState<string | null>(null);
+  const [addingCustom, setAddingCustom] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = async () => {
-    const { data: c } = await supabase.from("children").select("*").order("created_at");
+    const { data: c, error } = await supabase.from("children").select("*").order("created_at");
+    if (error) { toast.error(error.message); return; }
     setChildren(c ?? []);
     if (c && c.length && !selected) setSelected(c[0].id);
   };
 
   const loadQuests = async (cid: string) => {
-    const [{ data: q }, { data: g }] = await Promise.all([
+    const [{ data: q, error: qErr }, { data: g, error: gErr }] = await Promise.all([
       supabase.from("quests").select("*").eq("child_id", cid).order("created_at", { ascending: false }),
       supabase.from("gamification").select("*").eq("child_id", cid).maybeSingle(),
     ]);
+    if (qErr) { toast.error(qErr.message); return; }
+    if (gErr) { toast.error(gErr.message); return; }
     setQuests(q ?? []); setGame(g);
   };
 
@@ -63,55 +70,92 @@ const Quests = () => {
 
   const addPreset = async (preset: typeof PRESETS[0]) => {
     if (!selected || !user) return;
-    const { error } = await supabase.from("quests").insert([{
-      parent_id: user.id, child_id: selected,
-      title: t(`quests.presets.${preset.key}.title`),
-      description: t(`quests.presets.${preset.key}.desc`),
-      category: preset.category, points: preset.points, target_days: preset.days,
-    }]);
-    if (error) return toast.error(error.message);
-    toast.success(t("quests.added"));
+    setAddingPreset(preset.key);
+    try {
+      const { error } = await supabase.from("quests").insert([{
+        parent_id: user.id, child_id: selected,
+        title: t(`quests.presets.${preset.key}.title`),
+        description: t(`quests.presets.${preset.key}.desc`),
+        category: preset.category, points: preset.points, target_days: preset.days,
+      }]);
+      if (error) throw error;
+      toast.success(t("quests.added"));
+      await loadQuests(selected);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al añadir el reto");
+    } finally {
+      setAddingPreset(null);
+    }
   };
 
   const addCustom = async () => {
     if (!custom.trim() || !selected || !user) return;
-    await supabase.from("quests").insert([{
-      parent_id: user.id, child_id: selected, title: custom.trim(), category: "custom", points: 15, target_days: 3,
-    }]);
-    setCustom("");
+    setAddingCustom(true);
+    try {
+      const { error } = await supabase.from("quests").insert([{
+        parent_id: user.id, child_id: selected, title: custom.trim(), category: "custom", points: 15, target_days: 3,
+      }]);
+      if (error) throw error;
+      setCustom("");
+      toast.success(t("quests.added"));
+      await loadQuests(selected);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al añadir el reto");
+    } finally {
+      setAddingCustom(false);
+    }
   };
 
   const incrementProgress = async (q: any) => {
-    const newProgress = Math.min(q.target_days, q.progress + 1);
-    const completed = newProgress >= q.target_days;
-    await supabase.from("quests").update({
-      progress: newProgress,
-      status: completed ? "completed" : q.status,
-      completed_at: completed ? new Date().toISOString() : null,
-    }).eq("id", q.id);
-    if (completed && game) {
-      const newPoints = (game.points ?? 0) + q.points;
-      const newLevel = Math.floor(newPoints / 100) + 1;
-      const badges = (game.badges ?? []) as string[];
-      if (q.category === "sleep" && !badges.includes("🌙 Buen dormir")) badges.push("🌙 Buen dormir");
-      if (q.category === "family" && !badges.includes("👨‍👩‍👧 Familia presente")) badges.push("👨‍👩‍👧 Familia presente");
-      if (newPoints >= 500 && !badges.includes("🏆 Leyenda digital")) badges.push("🏆 Leyenda digital");
-      const today = new Date().toISOString().slice(0, 10);
-      const newStreak = game.last_healthy_date === today
-        ? game.streak_days ?? 0
-        : game.last_healthy_date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-          ? (game.streak_days ?? 0) + 1
-          : 1;
-      await supabase.from("gamification").upsert([{
-        parent_id: user!.id, child_id: selected, points: newPoints, badges, level: newLevel,
-        streak_days: newStreak, last_healthy_date: today,
-      }], { onConflict: "child_id" });
-      toast.success(`🎉 +${q.points} pts`);
+    setUpdatingId(q.id);
+    try {
+      const newProgress = Math.min(q.target_days, q.progress + 1);
+      const completed = newProgress >= q.target_days;
+      const { error } = await supabase.from("quests").update({
+        progress: newProgress,
+        status: completed ? "completed" : q.status,
+        completed_at: completed ? new Date().toISOString() : null,
+      }).eq("id", q.id);
+      if (error) throw error;
+      if (completed && game) {
+        const newPoints = (game.points ?? 0) + q.points;
+        const newLevel = Math.floor(newPoints / 100) + 1;
+        const badges = (game.badges ?? []) as string[];
+        if (q.category === "sleep" && !badges.includes("🌙 Buen dormir")) badges.push("🌙 Buen dormir");
+        if (q.category === "family" && !badges.includes("👨‍👩‍👧 Familia presente")) badges.push("👨‍👩‍👧 Familia presente");
+        if (newPoints >= 500 && !badges.includes("🏆 Leyenda digital")) badges.push("🏆 Leyenda digital");
+        const today = new Date().toISOString().slice(0, 10);
+        const newStreak = game.last_healthy_date === today
+          ? game.streak_days ?? 0
+          : game.last_healthy_date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+            ? (game.streak_days ?? 0) + 1
+            : 1;
+        const { error: gameError } = await supabase.from("gamification").upsert([{
+          parent_id: user!.id, child_id: selected, points: newPoints, badges, level: newLevel,
+          streak_days: newStreak, last_healthy_date: today,
+        }], { onConflict: "child_id" });
+        if (gameError) throw gameError;
+        toast.success(`🎉 +${q.points} pts`);
+      }
+      await loadQuests(selected);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al actualizar el reto");
+    } finally {
+      setUpdatingId(null);
     }
   };
 
   const removeQuest = async (id: string) => {
-    await supabase.from("quests").delete().eq("id", id);
+    setRemovingId(id);
+    try {
+      const { error } = await supabase.from("quests").delete().eq("id", id);
+      if (error) throw error;
+      await loadQuests(selected);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al borrar el reto");
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   const active = quests.filter(q => q.status === "active");
@@ -170,8 +214,8 @@ const Quests = () => {
               <h2 className="font-semibold mb-3 flex items-center gap-2"><Plus className="h-4 w-4" /> {t("quests.addPreset")}</h2>
               <div className="grid md:grid-cols-3 gap-2">
                 {PRESETS.map(p => (
-                  <button key={p.key} onClick={() => addPreset(p)}
-                    className="text-left p-3 rounded-lg border hover:border-primary hover:bg-muted transition-smooth">
+                  <button key={p.key} onClick={() => addPreset(p)} disabled={addingPreset === p.key}
+                    className="text-left p-3 rounded-lg border hover:border-primary hover:bg-muted transition-smooth disabled:opacity-50 disabled:cursor-not-allowed">
                     <div className="font-medium text-sm">{t(`quests.presets.${p.key}.title`)}</div>
                     <div className="text-xs text-muted-foreground mt-1">{t(`quests.presets.${p.key}.desc`)}</div>
                     <div className="flex gap-2 mt-2">
@@ -183,7 +227,7 @@ const Quests = () => {
               </div>
               <div className="flex gap-2 mt-4">
                 <Input value={custom} onChange={e => setCustom(e.target.value)} placeholder={t("quests.customPh")} maxLength={120} />
-                <Button onClick={addCustom} disabled={!custom.trim()}><Plus className="h-4 w-4 mr-1" /> {t("common.create")}</Button>
+                <Button onClick={addCustom} disabled={!custom.trim() || addingCustom}><Plus className="h-4 w-4 mr-1" /> {t("common.create")}</Button>
               </div>
             </Card>
 
@@ -207,8 +251,8 @@ const Quests = () => {
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-xs text-muted-foreground">{q.progress}/{q.target_days} {t("quests.days")}</span>
                         <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => removeQuest(q.id)}>{t("common.delete")}</Button>
-                          <Button size="sm" onClick={() => incrementProgress(q)}>
+                          <Button size="sm" variant="ghost" onClick={() => removeQuest(q.id)} disabled={removingId === q.id || updatingId === q.id}>{t("common.delete")}</Button>
+                          <Button size="sm" onClick={() => incrementProgress(q)} disabled={updatingId === q.id || removingId === q.id}>
                             <Check className="h-3 w-3 mr-1" /> {t("quests.markDay")}
                           </Button>
                         </div>

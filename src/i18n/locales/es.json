@@ -1,6 +1,7 @@
 {
   "common": {
     "loading": "Cargando…",
+    "loadError": "No se pudieron cargar los datos. Inténtalo de nuevo.",
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
@@ -115,7 +116,17 @@
     "emailAlreadyRegistered": "Ese email ya está registrado. Entra con tu cuenta o usa otro correo.",
     "invalidCredentials": "Email o contraseña incorrectos.",
     "emailNotConfirmed": "Revisa tu email y confirma la cuenta antes de entrar.",
-    "nameMin": "Introduce tu nombre (mínimo 2 caracteres)"
+    "nameMin": "Introduce tu nombre (mínimo 2 caracteres)",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "resetEmailSent": "Revisa tu email para restablecer tu contraseña.",
+    "newPasswordTitle": "Nueva contraseña",
+    "newPasswordSubtitle": "Elige una contraseña nueva para tu cuenta.",
+    "newPasswordLabel": "Nueva contraseña",
+    "saving": "Guardando…",
+    "savePassword": "Guardar contraseña",
+    "passwordUpdated": "¡Contraseña actualizada!",
+    "recoveryInvalid": "Este enlace de restablecimiento no es válido o ha caducado. Solicita uno nuevo para continuar.",
+    "recoveryInvalidToast": "Enlace de restablecimiento inválido o caducado. Solicita uno nuevo."
   },
   "dashboard": {
     "hello": "Hola 👋",

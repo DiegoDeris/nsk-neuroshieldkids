@@ -1,5 +1,6 @@
 import "@/i18n";
 import React from "react";
+import * as Sentry from "@sentry/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -37,6 +38,7 @@ class ErrorBoundary extends React.Component<
   static getDerivedStateFromError(error: Error) { return { error }; }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[NSK] Uncaught error:", error, info.componentStack);
+    Sentry.captureException(error, { extra: info as unknown as Record<string, unknown> });
   }
   render() {
     if (this.state.error) {

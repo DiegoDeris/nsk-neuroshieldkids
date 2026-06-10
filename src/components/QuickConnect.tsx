@@ -25,6 +25,8 @@ export const QuickConnect = ({ child, onChange }: Props) => {
   const [guided, setGuided] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [rotating, setRotating] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const initialSync = useRef<string | null>(child.last_ingest_at);
   const [token, setToken] = useState(child.ingest_token ?? "");
@@ -59,6 +61,7 @@ export const QuickConnect = ({ child, onChange }: Props) => {
   };
 
   const sendTest = async () => {
+    setSendingTest(true);
     try {
       const res = await fetch(INGEST_URL, {
         method: "POST",
@@ -74,17 +77,21 @@ export const QuickConnect = ({ child, onChange }: Props) => {
       toast.success(t("quick.testOk"));
       onChange();
     } catch (e: any) { toast.error(`❌ ${e.message}`); }
+    finally { setSendingTest(false); }
   };
 
   const rotate = async () => {
     if (!confirm(t("quick.rotateConfirm"))) return;
-    const newToken = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-      .map(b => b.toString(16).padStart(2, "0")).join("");
-    const { error } = await supabase.from("children").update({ ingest_token: newToken }).eq("id", child.id);
-    if (error) return toast.error(error.message);
-    setToken(newToken);
-    toast.success(t("quick.rotated"));
-    onChange();
+    setRotating(true);
+    try {
+      const newToken = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+        .map(b => b.toString(16).padStart(2, "0")).join("");
+      const { error } = await supabase.from("children").update({ ingest_token: newToken }).eq("id", child.id);
+      if (error) return toast.error(error.message);
+      setToken(newToken);
+      toast.success(t("quick.rotated"));
+      onChange();
+    } finally { setRotating(false); }
   };
 
   const onFile = async (file: File) => {
@@ -140,8 +147,8 @@ export const QuickConnect = ({ child, onChange }: Props) => {
           <div className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1">
             <QrCode className="h-3 w-3" /> Escanear con la cámara del menor
           </div>
-          <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={rotate} title={t("quick.rotate")}>
-            <RefreshCw className="h-3 w-3 mr-1" /> Regenerar QR
+          <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={rotate} disabled={rotating} title={t("quick.rotate")}>
+            <RefreshCw className={`h-3 w-3 mr-1 ${rotating ? "animate-spin" : ""}`} /> Regenerar QR
           </Button>
         </div>
 
@@ -152,8 +159,13 @@ export const QuickConnect = ({ child, onChange }: Props) => {
           <Step n={3} title={t("quick.step3Title")} body={t("quick.step3Body")} />
 
           <div className="flex gap-2 flex-wrap pt-2">
-            <Button onClick={sendTest} variant="outline" size="sm">
-              <Send className="h-3 w-3 mr-1" /> {t("quick.sendTest")}
+            <Button onClick={sendTest} variant="outline" size="sm" disabled={sendingTest}>
+              {sendingTest ? (
+                <span className="inline-block h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin mr-2" />
+              ) : (
+                <Send className="h-3 w-3 mr-1" />
+              )}
+              {t("quick.sendTest")}
             </Button>
             {!waiting ? (
               <Button onClick={() => { initialSync.current = child.last_ingest_at; setWaiting(true); }} size="sm">

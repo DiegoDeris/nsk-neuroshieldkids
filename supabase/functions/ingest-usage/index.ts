@@ -41,6 +41,17 @@ async function sbInsert(table: string, rows: unknown[]): Promise<{ status: numbe
   return { status: r.status, text };
 }
 
+// Upsert vía PostgREST (equivalente a supabase-js .upsert(...).onConflict(...))
+async function sbUpsert(table: string, rows: unknown[], onConflict: string): Promise<{ status: number; text: string }> {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+    method: "POST",
+    headers: { ...sbHeaders(), "Prefer": "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(rows),
+  });
+  const text = await r.text();
+  return { status: r.status, text };
+}
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -54,7 +65,7 @@ async function evaluateRules(
   childId: string,
   parentId: string,
   metric: { total_minutes: number; night_minutes: number; sessions: number; dominant_app: string | null },
-  events: Array<{ app_name: string | null; occurred_at: string }>,
+  events: Array<{ app_name: string | null; occurred_at: string; duration_seconds: number }>,
 ) {
   const rules = (await sbGet(
     "rules",
@@ -108,9 +119,11 @@ async function evaluateRules(
       case "app_time_limit": {
         const appName = String(cfg.app ?? "").toLowerCase();
         const limit = Number(cfg.minutes ?? 60);
-        const appMinutes = events
-          .filter(e => e.app_name && e.app_name.toLowerCase().includes(appName))
-          .length; // aproximación: 1 evento ≈ 1 min
+        const appMinutes = Math.round(
+          events
+            .filter(e => e.app_name && e.app_name.toLowerCase().includes(appName))
+            .reduce((s, e) => s + (e.duration_seconds ?? 0), 0) / 60,
+        );
         if (appMinutes >= limit) {
           triggered = true;
           title = `Límite de ${cfg.app} alcanzado`;
@@ -159,27 +172,48 @@ async function evaluateRules(
   }
 }
 
-// ── Rate limiting por token (en memoria, ventana deslizante 1 minuto) ────────
+// ── Rate limiting por token (persistente, tabla ingest_rate_limits) ─────────
 // Máx 20 batches por minuto por token para prevenir abuso
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 20;
-const rateMap = new Map<string, { count: number; windowStart: number }>();
 
-function checkRateLimit(token: string): boolean {
-  const now = Date.now();
-  const entry = rateMap.get(token);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateMap.set(token, { count: 1, windowStart: now });
-    // Limpiar entradas antiguas periódicamente
-    if (rateMap.size > 1000) {
-      for (const [k, v] of rateMap.entries()) {
-        if (now - v.windowStart > RATE_LIMIT_WINDOW_MS * 2) rateMap.delete(k);
-      }
-    }
+async function hashToken(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function checkRateLimit(token: string): Promise<boolean> {
+  const tokenHash = await hashToken(token);
+  const nowMs = Date.now();
+  const nowIso = new Date(nowMs).toISOString();
+
+  const rows = (await sbGet(
+    "ingest_rate_limits",
+    `select=token_hash,window_start,request_count&token_hash=eq.${tokenHash}&limit=1`,
+  )) as Array<{ token_hash: string; window_start: string; request_count: number }>;
+
+  const existing = Array.isArray(rows) ? rows[0] : undefined;
+
+  if (!existing || (nowMs - new Date(existing.window_start).getTime() > RATE_LIMIT_WINDOW_MS)) {
+    // Nueva ventana: resetear
+    await sbUpsert("ingest_rate_limits", [{
+      token_hash: tokenHash,
+      window_start: nowIso,
+      request_count: 1,
+      updated_at: nowIso,
+    }], "token_hash");
     return true;
   }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count++;
+
+  if (existing.request_count >= RATE_LIMIT_MAX) return false;
+
+  await sbUpsert("ingest_rate_limits", [{
+    token_hash: tokenHash,
+    window_start: existing.window_start,
+    request_count: existing.request_count + 1,
+    updated_at: nowIso,
+  }], "token_hash");
   return true;
 }
 
@@ -196,7 +230,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const evtsRaw: unknown[] = Array.isArray(body.events) ? body.events : [];
 
     // Rate limiting — verificar antes de procesar
-    if (token && !checkRateLimit(token)) {
+    if (token && !(await checkRateLimit(token))) {
       return json({ error: "rate limit exceeded — max 20 batches per minute" }, 429);
     }
 
@@ -302,7 +336,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       child.id,
       child.parent_id,
       { total_minutes: totalMinutes, night_minutes: nightMinutes, sessions, dominant_app: dominantApp },
-      rows.map(r => ({ app_name: r.app_name, occurred_at: r.occurred_at })),
+      rows.map(r => ({ app_name: r.app_name, occurred_at: r.occurred_at, duration_seconds: r.duration_seconds })),
     );
 
     return json({ ok: true, child_id: child.id, child_name: child.name, ingested: rows.length });

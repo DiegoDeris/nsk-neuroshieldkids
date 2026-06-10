@@ -20,11 +20,11 @@ export default function Account() {
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("delete-account", {
         body: {}
       });
       if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
       toast.success("Cuenta eliminada. Todos tus datos han sido borrados.");
       await signOut();
       navigate("/");

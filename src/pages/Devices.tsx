@@ -33,10 +33,12 @@ const Devices = () => {
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
   const [lastPred, setLastPred] = useState<any>(null);
   const [predicting, setPredicting] = useState(false);
+  const [detailError, setDetailError] = useState(false);
   const [, tick] = useState(0);
 
   const load = async () => {
-    const { data } = await supabase.from("children").select("*").order("created_at");
+    const { data, error } = await supabase.from("children").select("*").order("created_at");
+    if (error) { toast.error(error.message); setLoading(false); return; }
     setList(data ?? []);
     if (data && data.length && !selected) setSelected(data[0].id);
     setLoading(false);
@@ -44,14 +46,23 @@ const Devices = () => {
 
   const loadDetail = async (childId: string) => {
     const today = new Date().toISOString().slice(0, 10);
-    const [{ data: m }, { data: ev }, { data: p }] = await Promise.all([
-      supabase.from("usage_metrics").select("*").eq("child_id", childId).eq("metric_date", today).maybeSingle(),
-      supabase.from("usage_events").select("*").eq("child_id", childId).order("occurred_at", { ascending: false }).limit(15),
-      supabase.from("predictions").select("*").eq("child_id", childId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    ]);
-    setTodayMetric(m);
-    setLiveEvents(ev ?? []);
-    setLastPred(p);
+    try {
+      const [{ data: m, error: mErr }, { data: ev, error: evErr }, { data: p, error: pErr }] = await Promise.all([
+        supabase.from("usage_metrics").select("*").eq("child_id", childId).eq("metric_date", today).maybeSingle(),
+        supabase.from("usage_events").select("*").eq("child_id", childId).order("occurred_at", { ascending: false }).limit(15),
+        supabase.from("predictions").select("*").eq("child_id", childId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (mErr) throw mErr;
+      if (evErr) throw evErr;
+      if (pErr) throw pErr;
+      setTodayMetric(m);
+      setLiveEvents(ev ?? []);
+      setLastPred(p);
+      setDetailError(false);
+    } catch (e: any) {
+      setDetailError(true);
+      toast.error(e?.message ?? t("common.loadError"));
+    }
   };
 
   useEffect(() => { if (user) load(); }, [user]);
@@ -182,6 +193,12 @@ const Devices = () => {
                 );
               })}
             </div>
+
+            {current && detailError && (
+              <Card className="p-4 text-center text-sm text-destructive border-destructive/40">
+                {t("common.loadError")}
+              </Card>
+            )}
 
             {current && (
               <>

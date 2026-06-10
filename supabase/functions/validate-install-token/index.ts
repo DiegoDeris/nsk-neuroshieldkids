@@ -10,13 +10,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    // Accept token via query param or JSON body
-    const url = new URL(req.url);
-    let token = url.searchParams.get("token");
-    if (!token && req.method === "POST") {
-      const body = await req.json().catch(() => ({}));
-      token = body.token ?? null;
-    }
+    // El token solo se acepta en el body de un POST (JSON), nunca por query string,
+    // para evitar que quede registrado en logs de acceso/URL.
+    if (req.method !== "POST") return json({ valid: false, error: "method not allowed" }, 405);
+
+    const body = await req.json().catch(() => ({}));
+    const token = typeof body?.token === "string" ? body.token : null;
     if (!token) return json({ valid: false, error: "token required" }, 400);
 
     const admin = createClient(
