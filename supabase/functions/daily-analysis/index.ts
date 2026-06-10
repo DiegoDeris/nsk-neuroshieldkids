@@ -101,11 +101,13 @@ Deno.serve(async (req) => {
     const day = yesterday.toISOString().slice(0, 10);
 
     // Hijos con eventos ayer
+    const nextDay = new Date(yesterday); nextDay.setDate(nextDay.getDate() + 1);
+    const nextDayStr = nextDay.toISOString().slice(0, 10);
     const { data: childrenWithEvents } = await admin
       .from("usage_events")
       .select("child_id")
       .gte("occurred_at", `${day}T00:00:00Z`)
-      .lt("occurred_at", `${day}T23:59:59Z`);
+      .lt("occurred_at", `${nextDayStr}T00:00:00Z`);
 
     const allChildIds = Array.from(new Set((childrenWithEvents ?? []).map((r: any) => r.child_id)));
 
@@ -209,7 +211,7 @@ Deno.serve(async (req) => {
         if (!aiRes.ok) { console.error("ai err", aiRes.status, await aiRes.text()); continue; }
         const aiJson = await aiRes.json();
         const args = JSON.parse(aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "{}");
-        if (!args.emotional_score) continue;
+        if (args.emotional_score === undefined || args.emotional_score === null) continue;
 
         await admin.from("emotional_scores").insert([{
           child_id: cid, parent_id: child.parent_id,

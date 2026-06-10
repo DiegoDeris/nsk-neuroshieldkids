@@ -140,6 +140,7 @@ const ChildDetail = () => {
 
   const analyze = async () => {
     if (!limits.aiAnalysis) return; // plan free/basic: no IA
+    if (!child) return; // race condition guard: child no cargado aún
     setAnalyzing(true);
     try {
       const last = metrics[0] ?? { total_minutes: 0, night_minutes: 0, sessions: 0, dominant_app: null, app_breakdown: null, metric_date: new Date().toISOString().slice(0, 10) };
@@ -158,7 +159,10 @@ const ChildDetail = () => {
       const { data, error } = await supabase.functions.invoke("analyze-emotional", {
         body: { child, metric: last, heuristic, history }
       });
-      if (error) throw error;
+      if (error) {
+        const detail = (error as any).context?.error ?? (error as any).context?.message ?? error.message;
+        throw new Error(detail);
+      }
       if ((data as any).error) throw new Error((data as any).error);
       const a = data as any;
       setAiDeep(a);
@@ -261,7 +265,10 @@ const ChildDetail = () => {
     setCoaching(true);
     try {
       const { data, error } = await supabase.functions.invoke("prevention-coach", { body: { child_id: id } });
-      if (error) throw error;
+      if (error) {
+        const detail = (error as any).context?.error ?? (error as any).context?.message ?? error.message;
+        throw new Error(detail);
+      }
       if ((data as any).error) throw new Error((data as any).error);
       setCoachPlan(data);
       toast.success("Plan semanal creado ✨");
