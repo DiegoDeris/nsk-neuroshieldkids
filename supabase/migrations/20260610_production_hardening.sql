@@ -228,8 +228,54 @@ CREATE INDEX IF NOT EXISTS idx_pred_parent          ON public.predictions(parent
 CREATE INDEX IF NOT EXISTS idx_rec_parent           ON public.recommendations(parent_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_gamification_parent  ON public.gamification(parent_id);
 CREATE INDEX IF NOT EXISTS idx_quests_parent        ON public.quests(parent_id, status);
+CREATE INDEX IF NOT EXISTS idx_usage_metrics_parent ON public.usage_metrics(parent_id, metric_date DESC);
 
 -- ── 10. profiles.lessons_done: columna usada por Learn.tsx pero inexistente ──
 -- Sin esta columna, el progreso de la sección "Aprende" (src/pages/Learn.tsx)
 -- nunca se guarda ni se carga (select/update fallan en PostgREST).
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS lessons_done JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+-- ── 11. DELETE policies faltantes (audit #13) ──────────────────
+-- Auditoría QA #13: verificar que usage_events, usage_metrics, quests,
+-- rules, devices y alerts permiten borrado por su dueño (derecho al olvido).
+-- Todas ya tenían policy DELETE/ALL con auth.uid() = parent_id desde su
+-- creación (usage_metrics y alerts: 20260430164119, 49/85 y 20260519171621,
+-- 49/83; usage_events: 20260501094919:34 y 20260519171621:162; rules:
+-- 20260504073139:25 y 20260519171621:241; quests: 20260505105516:23 y
+-- 20260519171621:270; devices: 20260526_install_tokens_devices.sql:38-40
+-- vía "parent_rw_devices" FOR ALL). Estos bloques son un refuerzo idempotente
+-- por defensa en profundidad: solo crean la policy si ninguna policy
+-- DELETE/ALL existe ya para esa tabla.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='usage_events' AND cmd IN ('DELETE','ALL')
+  ) THEN
+    EXECUTE 'CREATE POLICY "usage_events delete own" ON public.usage_events FOR DELETE USING (auth.uid() = parent_id)';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='usage_metrics' AND cmd IN ('DELETE','ALL')
+  ) THEN
+    EXECUTE 'CREATE POLICY "usage_metrics delete own" ON public.usage_metrics FOR DELETE USING (auth.uid() = parent_id)';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='quests' AND cmd IN ('DELETE','ALL')
+  ) THEN
+    EXECUTE 'CREATE POLICY "quests delete own" ON public.quests FOR DELETE USING (auth.uid() = parent_id)';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='rules' AND cmd IN ('DELETE','ALL')
+  ) THEN
+    EXECUTE 'CREATE POLICY "rules delete own" ON public.rules FOR DELETE USING (auth.uid() = parent_id)';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='devices' AND cmd IN ('DELETE','ALL')
+  ) THEN
+    EXECUTE 'CREATE POLICY "devices delete own" ON public.devices FOR DELETE USING (auth.uid() = parent_id)';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='alerts' AND cmd IN ('DELETE','ALL')
+  ) THEN
+    EXECUTE 'CREATE POLICY "alerts delete own" ON public.alerts FOR DELETE USING (auth.uid() = parent_id)';
+  END IF;
+END$$;

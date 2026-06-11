@@ -634,6 +634,7 @@
     "rotate": "Regenerar token",
     "rotateConfirm": "Esto invalidará el token actual. ¿Continuar?",
     "rotated": "Token regenerado",
+    "generating": "Generando código de conexión…",
     "guided": "¿Necesitas paso a paso? Abrir asistente guiado",
     "backToQuick": "Volver a conexión rápida"
   },

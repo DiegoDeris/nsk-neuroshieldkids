@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.daily-analysis]
 verify_jwt = false
+
+# El trigger fn_notify_alert (SECURITY DEFINER, vía net.http_post) llama a esta
+# función con header x-webhook-secret en lugar de un JWT de Supabase. La función
+# valida ese secret de forma fail-closed (NOTIFY_ALERT_SECRET) — audit #2.
+[functions.notify-alert]
+verify_jwt = false

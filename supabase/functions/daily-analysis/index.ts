@@ -80,16 +80,19 @@ function computeHeuristic(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Verificar CRON_SECRET para prevenir invocaciones no autorizadas
+  // Verificar CRON_SECRET para prevenir invocaciones no autorizadas (fail-closed)
   const CRON_SECRET = Deno.env.get("CRON_SECRET");
-  if (CRON_SECRET) {
-    const authHeader = req.headers.get("authorization") ?? "";
-    const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
-    if (provided !== CRON_SECRET) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
+  if (!CRON_SECRET) {
+    console.error("CRON_SECRET no configurado — rechazando invocación");
+    return new Response(JSON.stringify({ error: "server misconfigured" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+  const provided = req.headers.get("x-cron-secret") ?? "";
+  if (provided !== CRON_SECRET) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
   }
 
   try {

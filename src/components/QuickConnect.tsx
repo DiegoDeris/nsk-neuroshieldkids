@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Send, Wifi, RefreshCw, QrCode, Zap, Settings2, Upload, Download, Smartphone } from "lucide-react";
+import { Copy, Check, Send, Wifi, RefreshCw, QrCode, Zap, Settings2, Upload, Download, Smartphone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ConnectWizard } from "./ConnectWizard";
@@ -30,15 +30,18 @@ export const QuickConnect = ({ child, onChange }: Props) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const initialSync = useRef<string | null>(child.last_ingest_at);
   const [token, setToken] = useState(child.ingest_token ?? "");
+  const [generating, setGenerating] = useState(!child.ingest_token);
 
   // Auto-generate token if missing (child created before migration or token was null)
   useEffect(() => {
     if (token) return;
+    setGenerating(true);
     const newToken = Array.from(crypto.getRandomValues(new Uint8Array(24)))
       .map(b => b.toString(16).padStart(2, "0")).join("");
     supabase.from("children").update({ ingest_token: newToken }).eq("id", child.id).then(({ error }) => {
-      if (error) { toast.error("No se pudo generar el token QR"); return; }
+      if (error) { toast.error("No se pudo generar el token QR"); setGenerating(false); return; }
       setToken(newToken);
+      setGenerating(false);
       onChange();
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,6 +120,15 @@ export const QuickConnect = ({ child, onChange }: Props) => {
         <Button size="sm" variant="ghost" onClick={() => setGuided(false)}>← {t("quick.backToQuick")}</Button>
         <ConnectWizard child={child} onChange={onChange} />
       </div>
+    );
+  }
+
+  if (generating) {
+    return (
+      <Card className="p-6 gradient-card flex flex-col items-center justify-center gap-2 min-h-[200px]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">{t("quick.generating")}</p>
+      </Card>
     );
   }
 

@@ -20,13 +20,17 @@ function sbHeaders() {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
-  // Verificar que el caller es el webhook interno de Supabase
-  if (WEBHOOK_SECRET) {
-    const callerSecret = req.headers.get("x-webhook-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "");
-    if (callerSecret !== WEBHOOK_SECRET) {
-      console.warn("notify-alert: unauthorized caller");
-      return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
-    }
+  // Verificar que el caller es el webhook interno de Supabase.
+  // Fail-closed: si el secret no está configurado, se rechaza toda llamada
+  // (antes, su ausencia desactivaba la verificación por completo).
+  if (!WEBHOOK_SECRET) {
+    console.error("notify-alert: NOTIFY_ALERT_SECRET no configurado — rechazando todas las llamadas");
+    return new Response(JSON.stringify({ error: "service misconfigured" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
+  }
+  const callerSecret = req.headers.get("x-webhook-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "");
+  if (callerSecret !== WEBHOOK_SECRET) {
+    console.warn("notify-alert: unauthorized caller");
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
   }
 
   try {
