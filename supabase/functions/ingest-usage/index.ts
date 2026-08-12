@@ -302,19 +302,42 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
     const dominantApp = Object.keys(appCounts).sort((a, b) => appCounts[b] - appCounts[a])[0] ?? null;
 
+    // Reparto de tiempo por app en minutos: lo necesita el motor clínico para
+    // distinguir consumo pasivo de interacción social.
+    const appBreakdown: Record<string, number> = {};
+    for (const [app, secs] of Object.entries(appCounts)) {
+      const mins = Math.round(secs / 60);
+      if (mins > 0) appBreakdown[app] = mins;
+    }
+
+    // ── Señales conductuales nativas ──────────────────────────────────────────
+    // La app Android envía contadores acumulados del día (desbloqueos, uso a
+    // oscuras, ventana de sueño, fragmentación). Al ser acumulativos, el último
+    // lote recibido sustituye al anterior: no se suman.
+    const nativeSignals = rows
+      .map((r) => r.metadata as Record<string, unknown>)
+      .filter((m) => m && (m.source === "android_native" || m.unlocks !== undefined))
+      .pop() ?? null;
+
     // Upsert métrica (ON CONFLICT reemplaza el valor calculado, no acumula)
     const existingMetric = (await sbGet(
       "usage_metrics",
-      `select=id&child_id=eq.${child.id}&metric_date=eq.${today}&limit=1`,
-    )) as Array<{ id: string }>;
+      `select=id,behavioral_signals&child_id=eq.${child.id}&metric_date=eq.${today}&limit=1`,
+    )) as Array<{ id: string; behavioral_signals: Record<string, unknown> | null }>;
 
     if (existingMetric.length > 0) {
-      await sbPatch("usage_metrics", `id=eq.${existingMetric[0].id}`, {
+      const patch: Record<string, unknown> = {
         total_minutes: totalMinutes,
         night_minutes: nightMinutes,
         sessions,
         dominant_app: dominantApp,
-      });
+        app_breakdown: appBreakdown,
+      };
+      if (nativeSignals) {
+        // Conservamos señales previas del día que este lote no traiga.
+        patch.behavioral_signals = { ...(existingMetric[0].behavioral_signals ?? {}), ...nativeSignals };
+      }
+      await sbPatch("usage_metrics", `id=eq.${existingMetric[0].id}`, patch);
     } else {
       await sbInsert("usage_metrics", [{
         child_id: child.id,
@@ -324,6 +347,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         night_minutes: nightMinutes,
         sessions,
         dominant_app: dominantApp,
+        app_breakdown: appBreakdown,
+        behavioral_signals: nativeSignals ?? {},
         source: "api",
       }]);
     }

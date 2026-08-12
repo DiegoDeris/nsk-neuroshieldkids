@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { computeEmotionalScore, computeScoreWithHistory, riskLabel, hoursAgo } from "@/lib/scoring";
+// El scoring vive ahora en el motor clínico del servidor (_shared/clinicalEngine.ts).
+// Aquí solo quedan utilidades de presentación.
+import { riskLabel, hoursAgo } from "@/lib/scoring";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { Brain, FileDown, Sparkles, ArrowLeft, Trophy, AlertTriangle, TrendingUp, Phone, MessageSquare, Target, Clock, Moon, Activity, Smartphone, CheckCircle2, ChevronDown, RefreshCw } from "lucide-react";
 import { QuickConnect } from "@/components/QuickConnect";
@@ -144,20 +146,20 @@ const ChildDetail = () => {
     setAnalyzing(true);
     try {
       const last = metrics[0] ?? { total_minutes: 0, night_minutes: 0, sessions: 0, dominant_app: null, app_breakdown: null, metric_date: new Date().toISOString().slice(0, 10) };
-      const prev_avg = metrics.slice(1, 8).reduce((a, m) => a + m.total_minutes, 0) / Math.max(1, metrics.slice(1, 8).length);
-      // v2: scoring con momentum temporal usando historial de métricas
-      const historyPoints = metrics.slice(1, 15).map((m: any) => ({
-        total_minutes: m.total_minutes, night_minutes: m.night_minutes, sessions: m.sessions
+      // v3: el motor clínico corre en el servidor. Necesita el historial SIN el
+      // día de hoy (para calcular líneas base limpias) y con las señales
+      // nativas de cada jornada, que alimentan sueño, compulsividad y atención.
+      const history = metrics.slice(1, 29).map((m: any) => ({
+        metric_date: m.metric_date,
+        total_minutes: m.total_minutes,
+        night_minutes: m.night_minutes,
+        sessions: m.sessions,
+        app_breakdown: m.app_breakdown,
+        behavioral_signals: m.behavioral_signals,
       }));
-      const heuristic = computeScoreWithHistory({
-        total_minutes: last.total_minutes, night_minutes: last.night_minutes,
-        sessions: last.sessions, dominant_app: last.dominant_app,
-        app_breakdown: last.app_breakdown, prev_week_avg_minutes: prev_avg,
-      }, historyPoints);
-      const history = metrics.slice(0, 14).map(m => ({ d: m.metric_date, t: m.total_minutes, n: m.night_minutes, s: m.sessions }));
 
       const { data, error } = await supabase.functions.invoke("analyze-emotional", {
-        body: { child, metric: last, heuristic, history }
+        body: { child, metric: last, history }
       });
       if (error) {
         const detail = (error as any).context?.error ?? (error as any).context?.message ?? error.message;
@@ -182,6 +184,12 @@ const ChildDetail = () => {
           referral_reason: a.referral_reason,
           immediate_actions: a.immediate_actions,
           long_term_actions: a.long_term_actions,
+          // v3: trazabilidad y respaldo clínico
+          clinical_domains: a.clinical_domains,
+          change_point: a.change_point,
+          unavailable_dimensions: a.unavailable_dimensions,
+          trace: a.trace,
+          engine_version: a.engine_version,
         },
         explanation: a.explanation,
         actions: a.actions,
