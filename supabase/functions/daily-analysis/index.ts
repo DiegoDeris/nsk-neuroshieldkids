@@ -1,80 +1,119 @@
-// Cron diario 08:00 — agrega eventos del día anterior y dispara IA + alertas para todos los hijos con datos.
-// v2: pasa historial de 14 días a la IA, usa heurística mejorada con momentum, evita alertas duplicadas.
+// Cron diario 08:00 — agrega eventos del día anterior, ejecuta el motor clínico
+// y dispara alertas para todos los hijos con datos.
+//
+// v3: la heurística local desaparece. El juicio de riesgo lo emite el motor
+// determinista compartido (_shared/clinicalEngine.ts), el mismo que usa el
+// análisis bajo demanda, así que ambos caminos dan exactamente el mismo
+// resultado para los mismos datos. Gemini pasa a redactar.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { runClinicalEngine, ENGINE_VERSION } from "../_shared/clinicalEngine.ts";
+import type { EngineResult } from "../_shared/clinicalEngine.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-/** Heurística alineada con scoring.ts v2 — incluye comparación semana previa y momentum. */
-function computeHeuristic(
-  m: { total_minutes: number; night_minutes: number; sessions: number; dominant_app?: string | null; app_breakdown?: Record<string, number> | null },
-  history: { total_minutes: number; night_minutes: number; sessions: number }[] = []
-) {
-  let score = 0;
-  const factors: { label: string }[] = [];
+interface Narrative {
+  explanation: string;
+  detected_patterns: string[];
+  actions: string[];
+}
 
-  // 1. Tiempo total
-  if (m.total_minutes > 120) {
-    const v = Math.min(35, Math.round((m.total_minutes - 120) / 10));
-    score += v;
-    factors.push({ label: "Exceso de tiempo diario" });
-  }
+/**
+ * Pide a Gemini que traduzca el resultado del motor a lenguaje de padre.
+ *
+ * Nunca lanza: si la IA falla, devuelve una redacción construida a partir de
+ * la evidencia que el motor ya ha calculado. El análisis no se pierde jamás
+ * por un problema de la IA, que es exactamente lo que ocurría en v2.
+ */
+async function writeNarrative(
+  apiKey: string | undefined,
+  child: { name?: string; age?: number },
+  engine: EngineResult,
+): Promise<Narrative> {
+  const fallback = (): Narrative => {
+    const top = engine.evidence[0];
+    const level = engine.risk_level === "high"
+      ? "alto" : engine.risk_level === "medium" ? "moderado" : "bajo";
+    return {
+      explanation: top
+        ? `Se ha detectado principalmente: ${top.claim.toLowerCase()} (${top.data_point}). `
+          + `Nivel de riesgo ${level}, confianza ${engine.confidence}%.`
+        : `No se han detectado señales destacables. Nivel de riesgo ${level}.`,
+      detected_patterns: engine.evidence.slice(0, 3).map((e) => e.claim),
+      actions: [],
+    };
+  };
 
-  // 2. Uso nocturno
-  if (m.night_minutes > 30) {
-    const v = Math.min(25, Math.round((m.night_minutes - 30) / 4));
-    score += v;
-    factors.push({ label: "Uso nocturno elevado" });
-  }
+  if (!apiKey) return fallback();
 
-  // 3. Comparación semana previa (alineado con scoring.ts)
-  const prevWeekItems = history.slice(0, 7);
-  if (prevWeekItems.length > 0) {
-    const prevAvg = prevWeekItems.reduce((a, h) => a + h.total_minutes, 0) / prevWeekItems.length;
-    if (prevAvg > 0) {
-      const delta = (m.total_minutes - prevAvg) / prevAvg;
-      if (delta > 0.3) {
-        const v = Math.min(20, Math.round(delta * 30));
-        score += v;
-        factors.push({ label: `Aumento ${Math.round(delta * 100)}% vs semana previa` });
-      }
-    }
-  }
+  const dimText = Object.entries(engine.dimensions)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `- ${k}: ${v}/100`)
+    .join("\n");
+  const evidenceText = engine.evidence.map((e) => `- ${e.claim} → ${e.data_point}`).join("\n");
 
-  // 4. Sesiones
-  if (m.sessions > 30) {
-    const v = Math.min(15, m.sessions - 30);
-    score += v;
-    factors.push({ label: "Muchas sesiones cortas" });
-  }
-
-  // 5. App dominante de alto enganche
-  const da = (m.dominant_app ?? "").toLowerCase();
-  if (["tiktok", "instagram", "snapchat", "youtube"].some(x => da.includes(x))) {
-    score += 10;
-    factors.push({ label: "App dominante de alto enganche" });
-  }
-
-  // 6. Momentum: 3+ días consecutivos con score alto
-  if (history.length >= 3) {
-    const recent3 = history.slice(0, 3);
-    const allHigh = recent3.every(h => {
-      let s = 0;
-      if (h.total_minutes > 120) s += Math.min(35, Math.round((h.total_minutes - 120) / 10));
-      if (h.night_minutes > 30) s += Math.min(25, Math.round((h.night_minutes - 30) / 4));
-      return s >= 40;
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 45_000);
+  try {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemini-2.0-flash",
+        messages: [
+          {
+            role: "system",
+            content: "Traduces un análisis conductual YA CALCULADO a lenguaje claro para un padre. "
+              + "Las puntuaciones y la evidencia vienen dadas: no las recalcules ni las contradigas. "
+              + "Nunca diagnostiques: habla de señales, no de trastornos. Español, cercano, sin alarmismo.",
+          },
+          {
+            role: "user",
+            content: `Niño/a: ${child.name}, ${child.age} años.\n`
+              + `Puntuación ${engine.emotional_score}/100, riesgo ${engine.risk_level}, `
+              + `confianza ${engine.confidence}%.\n\nDIMENSIONES:\n${dimText}\n\n`
+              + `EVIDENCIA MEDIDA:\n${evidenceText || "- Sin señales destacables"}\n\n`
+              + (engine.refer_to_professional ? `DERIVACIÓN: ${engine.referral_reason}\n` : "")
+              + `Redacta la explicación y las acciones.`,
+          },
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "emit_narrative",
+            parameters: {
+              type: "object",
+              properties: {
+                explanation: { type: "string" },
+                detected_patterns: { type: "array", maxItems: 3, items: { type: "string" } },
+                actions: { type: "array", maxItems: 3, items: { type: "string" } },
+              },
+              required: ["explanation", "detected_patterns", "actions"],
+              additionalProperties: false,
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "emit_narrative" } },
+      }),
     });
-    if (allHigh) {
-      score += 15;
-      factors.push({ label: "Patrón persistente (3+ días)" });
-    }
+    clearTimeout(timeout);
+    if (!res.ok) return fallback();
+    const json = await res.json();
+    const raw = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    if (!raw) return fallback();
+    const parsed = JSON.parse(raw);
+    return {
+      explanation: parsed.explanation || fallback().explanation,
+      detected_patterns: Array.isArray(parsed.detected_patterns) ? parsed.detected_patterns : [],
+      actions: Array.isArray(parsed.actions) ? parsed.actions : [],
+    };
+  } catch {
+    clearTimeout(timeout);
+    return fallback();
   }
-
-  score = Math.min(100, score);
-  const risk_level = score >= 70 ? "high" : score >= 40 ? "medium" : "low";
-  return { score, risk_level, factors };
 }
 
 Deno.serve(async (req) => {
@@ -150,16 +189,38 @@ Deno.serve(async (req) => {
           .select("*").eq("child_id", cid).eq("metric_date", day).maybeSingle();
         if (!child || !metric) continue;
 
-        // Historial de los últimos 14 días (para heurística y contexto IA)
+        // Historial de 28 días. Necesita app_breakdown y behavioral_signals:
+        // sin ellos el motor no puede calcular líneas base ni detectar
+        // aislamiento, compulsividad ni puntos de cambio.
         const { data: histMetrics } = await admin.from("usage_metrics")
-          .select("total_minutes, night_minutes, sessions, metric_date")
+          .select("total_minutes, night_minutes, sessions, metric_date, app_breakdown, behavioral_signals")
           .eq("child_id", cid)
           .lt("metric_date", day)
           .order("metric_date", { ascending: false })
-          .limit(14);
+          .limit(28);
         const history = histMetrics ?? [];
 
-        const heuristic = computeHeuristic(metric, history);
+        // ── El motor determinista decide ─────────────────────────────────────
+        const engine = runClinicalEngine({
+          age: Number(child.age ?? 12),
+          today: {
+            metric_date: metric.metric_date,
+            total_minutes: Number(metric.total_minutes ?? 0),
+            night_minutes: Number(metric.night_minutes ?? 0),
+            sessions: Number(metric.sessions ?? 0),
+            dominant_app: metric.dominant_app ?? null,
+            app_breakdown: metric.app_breakdown ?? null,
+            behavioral_signals: metric.behavioral_signals ?? null,
+          },
+          history: history.map((h: any) => ({
+            metric_date: h.metric_date,
+            total_minutes: Number(h.total_minutes ?? 0),
+            night_minutes: Number(h.night_minutes ?? 0),
+            sessions: Number(h.sessions ?? 0),
+            app_breakdown: h.app_breakdown ?? null,
+            behavioral_signals: h.behavioral_signals ?? null,
+          })),
+        });
 
         // Evitar análisis duplicado si ya existe un score de hoy generado por cron
         const { data: existingScore } = await admin.from("emotional_scores")
@@ -173,68 +234,50 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Llamada IA con historial
-        const historyCompact = history.slice(0, 14).map((m: any) => ({
-          d: m.metric_date, t: m.total_minutes, n: m.night_minutes, s: m.sessions
-        }));
-
-        const aiCtrl = new AbortController();
-        const aiTimeout = setTimeout(() => aiCtrl.abort(), 60_000);
-        let aiRes: Response;
-        try {
-        aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-          method: "POST",
-          signal: aiCtrl.signal,
-          headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "gemini-2.0-flash",
-            messages: [
-              { role: "system", content: "Eres asistente de bienestar digital infantil para padres. NO diagnosticas. Español, empático, preventivo, basado en evidencia." },
-              { role: "user", content: `Niño/a: ${child.name}, ${child.age} años.\nMétricas ${day}: total ${metric.total_minutes}min, nocturno ${metric.night_minutes}min, sesiones ${metric.sessions}, app dominante ${metric.dominant_app ?? "n/d"}, reparto ${JSON.stringify(metric.app_breakdown ?? {})}.\nHeurística: ${heuristic.score} (${heuristic.risk_level}). Factores: ${heuristic.factors.map((f: any) => f.label).join("; ") || "ninguno"}.\nHistórico 14 días: ${JSON.stringify(historyCompact)}` },
-            ],
-            tools: [{ type: "function", function: {
-              name: "emit_emotional_analysis",
-              parameters: {
-                type: "object",
-                properties: {
-                  emotional_score: { type: "integer", minimum: 0, maximum: 100 },
-                  risk_level: { type: "string", enum: ["low","medium","high"] },
-                  detected_patterns: { type: "array", maxItems: 3, items: { type: "string" } },
-                  explanation: { type: "string" },
-                  actions: { type: "array", maxItems: 3, items: { type: "string" } },
-                },
-                required: ["emotional_score","risk_level","detected_patterns","explanation","actions"],
-                additionalProperties: false,
-              },
-            }}],
-            tool_choice: { type: "function", function: { name: "emit_emotional_analysis" } },
-          }),
-        });
-        } catch (e: any) { clearTimeout(aiTimeout); if (e?.name === "AbortError") { console.warn("ai timeout for child", cid); continue; } throw e; }
-        clearTimeout(aiTimeout);
-        if (!aiRes.ok) { console.error("ai err", aiRes.status, await aiRes.text()); continue; }
-        const aiJson = await aiRes.json();
-        const args = JSON.parse(aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "{}");
-        if (args.emotional_score === undefined || args.emotional_score === null) continue;
+        // ── La IA solo redacta ───────────────────────────────────────────────
+        // Antes, si la IA fallaba se hacía `continue` y el niño se quedaba SIN
+        // análisis ese día. Ahora el motor ya ha decidido, así que el análisis
+        // se guarda igualmente con una redacción de reserva.
+        const narrative = await writeNarrative(GEMINI_API_KEY, child, engine);
 
         await admin.from("emotional_scores").insert([{
           child_id: cid, parent_id: child.parent_id,
-          score: args.emotional_score, risk_level: args.risk_level,
-          patterns: args.detected_patterns, explanation: args.explanation, actions: args.actions,
+          score: engine.emotional_score,
+          risk_level: engine.risk_level,
+          patterns: {
+            summary_patterns: narrative.detected_patterns,
+            dimensions: engine.dimensions,
+            unavailable_dimensions: engine.unavailable_dimensions,
+            confidence: engine.confidence,
+            severity_tier: engine.severity_tier,
+            evidence: engine.evidence.map((e) => ({ claim: e.claim, data_point: e.data_point })),
+            clinical_domains: engine.clinical_domains,
+            change_point: engine.change_point,
+            refer_to_professional: engine.refer_to_professional,
+            referral_reason: engine.referral_reason,
+            trace: engine.trace,
+            engine_version: ENGINE_VERSION,
+          },
+          explanation: narrative.explanation,
+          actions: narrative.actions,
           source_metric_id: metric.id,
         }]);
 
-        if (Array.isArray(args.actions)) {
-          await admin.from("recommendations").insert(args.actions.map((a: string) => ({
-            child_id: cid, parent_id: child.parent_id, title: a, body: args.explanation, category: args.risk_level,
+        if (narrative.actions.length > 0) {
+          await admin.from("recommendations").insert(narrative.actions.map((a: string) => ({
+            child_id: cid, parent_id: child.parent_id,
+            title: a, body: narrative.explanation, category: engine.risk_level,
           })));
         }
 
-        // Alertas: solo si score > 60 O riesgo alto. Para riesgo medio, verificar que no haya alerta en últimas 6h.
-        const sevMap: Record<string,string> = { high: "critical", medium: "moderate", low: "preventive" };
-        const shouldAlert = args.emotional_score > 60 || args.risk_level === "high";
+        // Alertas: score > 60, riesgo alto, o derivación recomendada.
+        const sevMap: Record<string, string> = { high: "critical", medium: "moderate", low: "preventive" };
+        const shouldAlert = engine.emotional_score > 60
+          || engine.risk_level === "high"
+          || engine.refer_to_professional;
+
         let mediumCooldownOk = false;
-        if (args.risk_level === "medium" && args.emotional_score <= 60) {
+        if (engine.risk_level === "medium" && engine.emotional_score <= 60) {
           const { count } = await admin.from("alerts")
             .select("id", { count: "exact", head: true })
             .eq("child_id", cid)
@@ -243,15 +286,24 @@ Deno.serve(async (req) => {
         }
 
         if (shouldAlert || mediumCooldownOk) {
+          // La alerta cita la evidencia concreta, no un número abstracto.
+          const topEvidence = engine.evidence[0];
+          const detail = topEvidence ? `${topEvidence.claim} (${topEvidence.data_point}).` : "";
           await admin.from("alerts").insert([{
             child_id: cid, parent_id: child.parent_id,
-            severity: sevMap[args.risk_level] ?? "preventive",
-            title: `[Análisis automático] Score ${args.emotional_score} — ${child.name}`,
-            message: args.explanation,
+            severity: sevMap[engine.risk_level] ?? "preventive",
+            title: `${child.name}: ${topEvidence?.claim ?? `puntuación ${engine.emotional_score}`}`,
+            message: `${detail} ${narrative.explanation}`.trim(),
           }]);
         }
 
-        results.push({ child_id: cid, score: args.emotional_score, risk: args.risk_level });
+        results.push({
+          child_id: cid,
+          score: engine.emotional_score,
+          risk: engine.risk_level,
+          confidence: engine.confidence,
+          engine: ENGINE_VERSION,
+        });
       } catch (childErr) {
         console.error(`Error procesando hijo ${cid}:`, childErr);
         failureCount++;

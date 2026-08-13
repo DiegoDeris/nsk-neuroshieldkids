@@ -296,6 +296,12 @@ const ChildDetail = () => {
     referral_reason: ai.referral_reason,
     immediate_actions: ai.immediate_actions,
     long_term_actions: ai.long_term_actions,
+    // v3: respaldo clínico y trazabilidad
+    clinical_domains: ai.clinical_domains,
+    change_point: ai.change_point,
+    unavailable_dimensions: ai.unavailable_dimensions,
+    trace: ai.trace,
+    engine_version: ai.engine_version,
   } : null);
 
   const downloadReport = async () => {
@@ -553,16 +559,43 @@ const ChildDetail = () => {
           <Card className="p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2"><Brain className="h-4 w-4 text-primary" /> Dimensiones del bienestar</h3>
             <div className="grid sm:grid-cols-2 gap-4">
-              {Object.entries(deep.dimensions as Record<string, number>).map(([k, v]) => (
-                <div key={k} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>{DIM_LABELS[k] ?? k}</span>
-                    <span className={v >= 70 ? "text-destructive font-semibold" : v >= 40 ? "text-warning font-semibold" : "text-muted-foreground"}>{v}</span>
+              {Object.entries(deep.dimensions as Record<string, number>).map(([k, v]) => {
+                // Un sistema serio dice lo que NO puede medir en vez de
+                // inventarse un número. Estas dimensiones necesitan la app nativa.
+                const na = Array.isArray(deep.unavailable_dimensions)
+                  && deep.unavailable_dimensions.includes(k);
+                return (
+                  <div key={k} className={`space-y-1 ${na ? "opacity-50" : ""}`}>
+                    <div className="flex justify-between text-sm">
+                      <span>{DIM_LABELS[k] ?? k}</span>
+                      {na ? (
+                        <span className="text-xs text-muted-foreground">sin datos suficientes</span>
+                      ) : (
+                        <span className={v >= 70 ? "text-destructive font-semibold" : v >= 40 ? "text-warning font-semibold" : "text-muted-foreground"}>{v}</span>
+                      )}
+                    </div>
+                    <Progress value={na ? 0 : v} className="h-2" />
                   </div>
-                  <Progress value={v} className="h-2" />
-                </div>
-              ))}
+                );
+              })}
             </div>
+
+            {Array.isArray(deep.unavailable_dimensions) && deep.unavailable_dimensions.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-3">
+                Algunas dimensiones necesitan la app instalada en el dispositivo para poder medirse.
+              </p>
+            )}
+
+            {deep.change_point && (
+              <div className="mt-5 p-3 rounded-lg border border-warning/30 bg-warning/5">
+                <div className="text-sm font-semibold">Cambio de patrón detectado</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {deep.change_point.direction === "increase" ? "Aumento" : "Descenso"} del{" "}
+                  {deep.change_point.magnitude_pct}% en {deep.change_point.metric} desde el{" "}
+                  {deep.change_point.date}.
+                </div>
+              </div>
+            )}
 
             {Array.isArray(deep.evidence) && deep.evidence.length > 0 && (
               <div className="mt-6">
@@ -607,6 +640,45 @@ const ChildDetail = () => {
                 <ul className="space-y-1 text-sm italic">
                   {deep.conversation_script.map((c: string, i: number) => <li key={i}>"{fixMojibake(c)}"</li>)}
                 </ul>
+              </div>
+            )}
+
+            {/* Respaldo clínico: qué dominios de escalas publicadas presentan
+                indicios. Es lo que convierte una opinión en una evaluación. */}
+            {Array.isArray(deep.clinical_domains) && deep.clinical_domains.length > 0 && (
+              <div className="mt-6">
+                <h4 className="text-sm font-semibold mb-1">Dominios clínicos evaluados</h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Indicios observables en el comportamiento digital, contrastados con dominios
+                  de escalas publicadas. No constituye un diagnóstico.
+                </p>
+                <ul className="space-y-2">
+                  {deep.clinical_domains.map((d: any, i: number) => (
+                    <li key={i} className="text-sm p-3 rounded-lg border flex gap-3 items-start">
+                      <span className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${d.met ? "bg-destructive" : "bg-muted-foreground/40"}`} />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={d.met ? "font-semibold" : ""}>{d.domain}</span>
+                          <Badge variant="outline" className="text-[10px]">{d.instrument}</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">{fixMojibake(d.rationale)}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Trazabilidad: toda alerta debe poder justificarse */}
+            {deep.trace && (
+              <div className="mt-6 pt-4 border-t text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+                <span>Motor {deep.trace.engine_version}</span>
+                <span>{deep.trace.data_days} días de historial</span>
+                {deep.trace.baseline_total_minutes != null && (
+                  <span>Línea base {deep.trace.baseline_total_minutes} min/día</span>
+                )}
+                <span>{deep.trace.has_native_signals ? "Señales de app nativa" : "Sin app nativa"}</span>
+                {deep.confidence != null && <span>Confianza {deep.confidence}%</span>}
               </div>
             )}
           </Card>

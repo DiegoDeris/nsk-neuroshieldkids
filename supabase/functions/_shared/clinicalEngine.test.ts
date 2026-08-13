@@ -464,6 +464,86 @@ section("CASO 11 · iOS con sueño real de HealthKit — dato medido, no estimad
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+section("CASO 12 · Fase 2 Android — latencia de respuesta y compulsión sin estímulo");
+// ══════════════════════════════════════════════════════════════════════════════
+{
+  const input: EngineInput = {
+    age: 14,
+    today: {
+      metric_date: "2026-05-29",
+      total_minutes: 140, night_minutes: 12, sessions: 60,
+      dominant_app: "com.whatsapp",
+      app_breakdown: { "com.whatsapp": 80, "com.instagram.android": 60 },
+      behavioral_signals: {
+        source: "android_native",
+        unlocks: 96, night_unlocks: 1, dark_unlocks: 0,
+        longest_idle_gap_minutes: 500,
+        switches_per_minute: 0.6, distinct_apps: 6,
+        avg_session_seconds: 140, night_minutes: 12,
+        // Fase 2
+        notifications_total: 120, notifications_social: 64,
+        avg_response_seconds: 11,     // responde en 11 s de media
+        fast_response_ratio: 0.92,    // el 92% en menos de 30 s
+        phantom_pickups: 58,          // coge el móvil sin que llegue nada
+      },
+    },
+    history: baseline(14, 130, 10, 70),
+  };
+
+  const r = runClinicalEngine(input);
+  console.log(`  score=${r.emotional_score} riesgo=${r.risk_level}`);
+  console.log(`  dimensiones:`, r.dimensions);
+  r.evidence.slice(0, 4).forEach((e) => console.log(`    · ${e.claim} → ${e.data_point}`));
+
+  check("ansiedad alta por respuesta inmediata", r.dimensions.anxiety_signals >= 50,
+    `${r.dimensions.anxiety_signals}`);
+  check("detecta la latencia de respuesta",
+    r.evidence.some((e) => /inmediata/i.test(e.claim)));
+  check("detecta compulsión sin estímulo",
+    r.evidence.some((e) => /sin que haya llegado/i.test(e.claim)));
+  check("los desbloqueos espontáneos suman a dependencia", r.dimensions.dependency >= 45,
+    `${r.dimensions.dependency}`);
+  check("no lo confunde con exceso de tiempo", input.today.total_minutes < 180);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+section("CASO 13 · Evitación — recibe mensajes y no los abre");
+// ══════════════════════════════════════════════════════════════════════════════
+{
+  const input: EngineInput = {
+    age: 15,
+    today: {
+      metric_date: "2026-05-29",
+      total_minutes: 120, night_minutes: 8, sessions: 15,
+      dominant_app: "com.google.android.youtube",
+      app_breakdown: { "com.google.android.youtube": 110, "com.whatsapp": 10 },
+      behavioral_signals: {
+        source: "android_native",
+        unlocks: 24, night_unlocks: 0, dark_unlocks: 0,
+        longest_idle_gap_minutes: 540,
+        switches_per_minute: 0.2, distinct_apps: 3,
+        avg_session_seconds: 480, night_minutes: 8,
+        notifications_total: 70, notifications_social: 45,
+        avg_response_seconds: 620,   // más de 10 min de media
+        fast_response_ratio: 0.04,   // casi nunca responde rápido
+        phantom_pickups: 6,
+      },
+    },
+    history: baseline(14, 130, 8, 30),
+  };
+
+  const r = runClinicalEngine(input);
+  console.log(`  dimensiones:`, r.dimensions);
+
+  check("detecta evitación de mensajes",
+    r.evidence.some((e) => /evita abrir/i.test(e.claim)));
+  check("suma a aislamiento", r.dimensions.social_withdrawal >= 15,
+    `${r.dimensions.social_withdrawal}`);
+  check("no lo trata como ansiedad por aprobación",
+    !r.evidence.some((e) => /inmediata/i.test(e.claim)));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 console.log(`\n${"═".repeat(70)}`);
 console.log(`RESULTADO:  ${passed} correctas · ${failed} fallidas`);
 if (failed > 0) {

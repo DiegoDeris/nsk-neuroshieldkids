@@ -40,6 +40,16 @@ export interface NativeSignals {
   longest_session_seconds?: number;
   night_minutes?: number;
 
+  // Fase 2 de Android: requiere permiso de notificaciones.
+  notifications_total?: number;
+  notifications_social?: number;
+  /** Segundos medios hasta abrir una notificación social. */
+  avg_response_seconds?: number;
+  /** Proporción 0-1 de respuestas en menos de 30 segundos. */
+  fast_response_ratio?: number;
+  /** Desbloqueos sin notificación previa: compulsión sin estímulo externo. */
+  phantom_pickups?: number;
+
   // Exclusivo de iOS (HealthKit): sueño medido, no estimado.
   sleep_minutes?: number;
   /** Hora de conciliación en decimal: 23.5 = 23:30. */
@@ -453,6 +463,43 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
       }
     } else {
       unavailable.push("anxiety_signals");
+    }
+
+    // ── Latencia de respuesta social ──────────────────────────────────────
+    // La métrica más específica de ansiedad por aprobación que existe, y la
+    // que ninguna app del mercado mide hoy. Requiere el permiso de fase 2.
+    if (typeof sig.fast_response_ratio === "number" && (sig.notifications_social ?? 0) >= 5) {
+      const ratio = sig.fast_response_ratio;
+      const avgSec = sig.avg_response_seconds ?? 0;
+
+      // Responder casi siempre en menos de 30 s indica que está pendiente del
+      // móvil de forma continua, esperando validación.
+      if (ratio > 0.7) {
+        const pts = Math.min(35, Math.round((ratio - 0.7) * 100));
+        add("anxiety_signals", pts, "Responde de forma casi inmediata a los mensajes",
+          `${Math.round(ratio * 100)}% de las respuestas en menos de 30 s` +
+          (avgSec > 0 ? `, media de ${Math.round(avgSec)} s` : ""));
+      }
+
+      // El patrón contrario también es señal: acumular sin abrir es evitación.
+      if (ratio < 0.1 && avgSec > 300) {
+        add("anxiety_signals", 18, "Evita abrir los mensajes que recibe",
+          `respuesta media de ${Math.round(avgSec / 60)} min`);
+        add("social_withdrawal", 15, "Deja los mensajes sin atender",
+          `solo ${Math.round(ratio * 100)}% respondidos con prontitud`);
+      }
+    }
+
+    // ── Compulsión sin estímulo ───────────────────────────────────────────
+    // Coger el móvil cuando no ha pasado nada. Sin notificación que lo
+    // justifique, solo queda el impulso: es la medida más limpia que existe.
+    if (typeof sig.phantom_pickups === "number" && sig.phantom_pickups > 20) {
+      const pts = Math.min(30, Math.round((sig.phantom_pickups - 20) / 1.5));
+      add("dependency", pts, "Coge el móvil sin que haya llegado ninguna notificación",
+        `${sig.phantom_pickups} desbloqueos espontáneos`);
+      add("anxiety_signals", Math.min(15, Math.round(pts / 2)),
+        "Comprobación sin motivo aparente",
+        `${sig.phantom_pickups} veces sin aviso previo`);
     }
   }
 
