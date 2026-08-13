@@ -39,6 +39,14 @@ export interface NativeSignals {
   avg_session_seconds?: number;
   longest_session_seconds?: number;
   night_minutes?: number;
+
+  // Exclusivo de iOS (HealthKit): sueño medido, no estimado.
+  sleep_minutes?: number;
+  /** Hora de conciliación en decimal: 23.5 = 23:30. */
+  sleep_onset_hour?: number;
+  sleep_fragmentation?: number;
+  resting_heart_rate?: number;
+  hrv_ms?: number;
 }
 
 export interface DayMetric {
@@ -263,8 +271,10 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
   {
     const nightMin = sig.night_minutes ?? today.night_minutes ?? 0;
 
-    if (nightMin > 15) {
-      const pts = Math.min(30, Math.round((nightMin - 15) / 3));
+    // Cualquier uso sostenido después de las 23:00 en un menor es señal. El
+    // umbral arranca pronto (10 min) porque el daño al sueño no requiere horas.
+    if (nightMin > 10) {
+      const pts = Math.min(35, Math.round((nightMin - 10) / 2.5));
       add("sleep_disruption", pts, "Uso del dispositivo en franja nocturna",
         `${nightMin} min entre las 23:00 y las 06:00`);
     }
@@ -280,16 +290,70 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
         `${sig.night_unlocks} desbloqueos nocturnos`);
     }
 
-    // Ventana de sueño estimada frente a la recomendación por edad
-    if (typeof sig.longest_idle_gap_minutes === "number" && sig.longest_idle_gap_minutes > 0) {
-      const sleepH = sig.longest_idle_gap_minutes / 60;
+    // Duración del descanso frente a la recomendación por edad.
+    // Se prefiere el sueño medido de HealthKit (iOS) sobre la estimación por
+    // inactividad (Android), y se dice cuál se ha usado para no confundirlos.
+    const measuredSleep = typeof sig.sleep_minutes === "number" && sig.sleep_minutes > 0;
+    const sleepMinutes = measuredSleep ? sig.sleep_minutes! : (sig.longest_idle_gap_minutes ?? 0);
+
+    if (sleepMinutes > 0) {
+      const sleepH = sleepMinutes / 60;
       const needH = recommendedSleepHours(age);
       if (sleepH < needH) {
         const deficit = needH - sleepH;
-        const pts = Math.min(25, Math.round(deficit * 12));
-        add("sleep_disruption", pts, "Ventana de descanso por debajo de lo recomendado para su edad",
-          `${sleepH.toFixed(1)} h sin actividad frente a ${needH} h recomendadas`);
+        // El dato medido merece más peso que la estimación por inactividad.
+        const pts = Math.min(measuredSleep ? 30 : 25, Math.round(deficit * 12));
+        add("sleep_disruption", pts,
+          measuredSleep
+            ? "Duerme menos de lo recomendado para su edad"
+            : "Ventana de descanso por debajo de lo recomendado para su edad",
+          measuredSleep
+            ? `${sleepH.toFixed(1)} h de sueño medido frente a ${needH} h recomendadas`
+            : `${sleepH.toFixed(1)} h sin actividad frente a ${needH} h recomendadas`);
       }
+    }
+
+    // Sueño fragmentado: despertares repetidos a lo largo de la noche
+    if (typeof sig.sleep_fragmentation === "number" && sig.sleep_fragmentation >= 3) {
+      const pts = Math.min(20, sig.sleep_fragmentation * 4);
+      add("sleep_disruption", pts, "Sueño fragmentado con despertares repetidos",
+        `${sig.sleep_fragmentation} interrupciones durante la noche`);
+    }
+
+    // Retraso de fase: conciliar cada vez más tarde es uno de los marcadores
+    // más consistentes de desajuste circadiano en adolescentes.
+    if (typeof sig.sleep_onset_hour === "number") {
+      const onset = sig.sleep_onset_hour;
+      // Normalizamos: 0-6 h se interpreta como madrugada (24-30)
+      const norm = onset < 6 ? onset + 24 : onset;
+      const lateThreshold = age <= 12 ? 22.5 : 23.5;
+      if (norm > lateThreshold) {
+        const pts = Math.min(20, Math.round((norm - lateThreshold) * 10));
+        const h = Math.floor(onset);
+        const m = Math.round((onset - h) * 60);
+        add("sleep_disruption", pts, "Se duerme más tarde de lo aconsejable para su edad",
+          `conciliación a las ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+      }
+    }
+  }
+
+  // ── 1b. Marcadores biométricos de estrés (solo iOS con wearable) ───────────
+  {
+    // La frecuencia cardíaca en reposo elevada y la variabilidad baja son
+    // marcadores validados de estrés sostenido. Solo se usan si existen.
+    if (typeof sig.hrv_ms === "number" && sig.hrv_ms > 0 && sig.hrv_ms < 30) {
+      const pts = Math.min(20, Math.round((30 - sig.hrv_ms)));
+      add("anxiety_signals", pts, "Variabilidad cardíaca baja, compatible con estrés sostenido",
+        `VFC de ${Math.round(sig.hrv_ms)} ms`);
+    }
+    const baseHR = history
+      .map((h) => h.behavioral_signals?.resting_heart_rate)
+      .filter((v): v is number => typeof v === "number");
+    if (typeof sig.resting_heart_rate === "number" && baseHR.length >= 5) {
+      const z = zScore(sig.resting_heart_rate, baseHR, 3);
+      add("anxiety_signals", zToPoints(z, 15),
+        "Frecuencia cardíaca en reposo por encima de su patrón",
+        `${Math.round(sig.resting_heart_rate)} lpm, ${z.toFixed(1)} sigmas sobre su media`);
     }
   }
 
@@ -313,7 +377,7 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
     // Por encima de ~50 al día se considera patrón de comprobación compulsiva.
     if (typeof sig.unlocks === "number") {
       if (sig.unlocks > 50) {
-        const pts = Math.min(25, Math.round((sig.unlocks - 50) / 4));
+        const pts = Math.min(45, Math.round((sig.unlocks - 50) / 1.8));
         add("dependency", pts, "Comprobación compulsiva del dispositivo",
           `${sig.unlocks} desbloqueos en el día`);
       }
@@ -343,7 +407,7 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
   {
     if (typeof sig.switches_per_minute === "number" && sig.switches_per_minute > 0) {
       if (sig.switches_per_minute > 0.5) {
-        const pts = Math.min(30, Math.round((sig.switches_per_minute - 0.5) * 40));
+        const pts = Math.min(40, Math.round((sig.switches_per_minute - 0.5) * 40));
         add("attention_fragmentation", pts, "Cambio de aplicación muy frecuente",
           `${sig.switches_per_minute.toFixed(2)} cambios por minuto de uso`);
       }
@@ -490,12 +554,20 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
   };
   let weighted = 0;
   let weightSum = 0;
+  let topDimension = 0;
   for (const k of Object.keys(dims) as DimensionKey[]) {
     if (unavailable.includes(k)) continue;
     weighted += dims[k] * weights[k];
     weightSum += weights[k];
+    if (dims[k] > topDimension) topDimension = dims[k];
   }
-  const emotional_score = clamp(weightSum > 0 ? weighted / weightSum : 0);
+  const weightedMean = weightSum > 0 ? weighted / weightSum : 0;
+
+  // Criterio de triaje: una sola dimensión grave YA es grave, aunque el resto
+  // esté bien. Un niño que duerme cinco horas por el móvil tiene un problema
+  // serio aunque su vida social y su atención sean normales; promediarlo con
+  // las dimensiones tranquilas lo enmascararía.
+  const emotional_score = clamp(Math.max(weightedMean, topDimension * 0.85));
 
   const risk_level: EngineResult["risk_level"] =
     emotional_score >= 70 ? "high" : emotional_score >= 40 ? "medium" : "low";
