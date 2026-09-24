@@ -222,6 +222,16 @@ Deno.serve(async (req) => {
           })),
         });
 
+        // Puerta de seguridad: si la fuente no mide el dispositivo, no se
+        // guarda ninguna puntuación ni se genera alerta. Antes se habría
+        // insertado un veredicto clínico calculado sobre datos que no
+        // representan el uso real del menor.
+        if (!engine.assessable) {
+          console.log(`Saltando ${cid}: ${engine.not_assessable_reason}`);
+          results.push({ child_id: cid, skipped: "sin_datos_medidos" });
+          continue;
+        }
+
         // Evitar análisis duplicado si ya existe un score de hoy generado por cron
         const { data: existingScore } = await admin.from("emotional_scores")
           .select("id")

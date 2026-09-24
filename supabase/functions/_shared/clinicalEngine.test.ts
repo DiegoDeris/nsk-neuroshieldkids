@@ -211,7 +211,7 @@ section("CASO 4 · Aislamiento social — consumo pasivo sustituye a la conversa
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-section("CASO 5 · Sin app nativa (solo web) — debe bajar la confianza y avisar");
+section("CASO 5 · Sin app nativa — se niega a evaluar (cambio de seguridad v3.1)");
 // ══════════════════════════════════════════════════════════════════════════════
 {
   const input: EngineInput = {
@@ -232,15 +232,15 @@ section("CASO 5 · Sin app nativa (solo web) — debe bajar la confianza y avisa
   console.log(`  score=${r.emotional_score} confianza=${r.confidence}%`);
   console.log(`  no disponibles:`, r.unavailable_dimensions);
 
-  check("confianza reducida sin señales nativas", r.confidence <= 65, `${r.confidence}%`);
-  check("marca dimensiones no calculables", r.unavailable_dimensions.length >= 2,
-    `${r.unavailable_dimensions.length}`);
-  check("ansiedad marcada como no disponible",
-    r.unavailable_dimensions.includes("anxiety_signals"));
-  // Sin app nativa el sueño solo puede estimarse con dos señales, así que la
-  // dimensión queda estructuralmente más floja. Es correcto que sea así.
-  check("aun así detecta el uso nocturno", r.dimensions.sleep_disruption >= 15,
-    `${r.dimensions.sleep_disruption}`);
+  // ANTES (v3.0): se evaluaba igualmente con confianza baja. Eso producía un
+  // veredicto clínico sobre datos que no miden el uso real del menor.
+  // AHORA (v3.1): se rechaza. Es la diferencia entre equivocarse con cautela
+  // y equivocarse con autoridad.
+  check("confianza cero, no solo baja", r.confidence === 0, `${r.confidence}%`);
+  check("todas las dimensiones marcadas como no disponibles",
+    r.unavailable_dimensions.length === 6, `${r.unavailable_dimensions.length}`);
+  check("no emite puntuación", r.emotional_score === null);
+  check("no emite nivel de riesgo", r.risk_level === null);
   check("registra que no hay señales nativas", r.trace.has_native_signals === false);
 }
 
@@ -404,9 +404,9 @@ section("CASO 10 · Rangos válidos — nada puede salirse de 0-100");
 
   const allInRange = Object.values(r.dimensions).every((v) => v >= 0 && v <= 100 && Number.isInteger(v));
   check("todas las dimensiones en 0-100 y enteras", allInRange);
-  check("score global en rango", r.emotional_score >= 0 && r.emotional_score <= 100);
+  check("score global en rango", (r.emotional_score ?? -1) >= 0 && (r.emotional_score ?? 101) <= 100);
   check("confianza en rango", r.confidence >= 10 && r.confidence <= 95);
-  check("nivel crítico en caso extremo", r.severity_tier === "critical", r.severity_tier);
+  check("nivel crítico en caso extremo", r.severity_tier === "critical", r.severity_tier ?? "null");
   check("evidencia limitada a 8 entradas", r.evidence.length <= 8, `${r.evidence.length}`);
 }
 
@@ -541,6 +541,116 @@ section("CASO 13 · Evitación — recibe mensajes y no los abre");
     `${r.dimensions.social_withdrawal}`);
   check("no lo trata como ansiedad por aprobación",
     !r.evidence.some((e) => /inmediata/i.test(e.claim)));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+section("CASO 14 · SEGURIDAD · Monitor web — NO puede emitir veredicto clínico");
+// ══════════════════════════════════════════════════════════════════════════════
+{
+  // Esto es lo que enviaba el monitor web: tiempo de su propia página abierta,
+  // presentado como si fuera uso del móvil del niño.
+  const input: EngineInput = {
+    age: 5,
+    today: {
+      metric_date: "2026-05-29",
+      total_minutes: 300, night_minutes: 120, sessions: 50,
+      dominant_app: "__monitor_web__",
+      app_breakdown: { "__monitor_web__": 300 },
+      behavioral_signals: { source: "web_monitor" } as never,
+    },
+    history: baseline(14, 60, 5),
+  };
+
+  const r = runClinicalEngine(input);
+  console.log(`  evaluable=${r.assessable} calidad=${r.data_quality} score=${r.emotional_score}`);
+  console.log(`  motivo: ${r.not_assessable_reason?.slice(0, 80)}...`);
+
+  check("marca la fuente como insuficiente", r.data_quality === "insufficient");
+  check("NO emite puntuación", r.emotional_score === null);
+  check("NO emite nivel de riesgo", r.risk_level === null);
+  check("NO deriva a profesional con datos falsos", r.refer_to_professional === false);
+  check("NO inventa evidencia", r.evidence.length === 0);
+  check("NO inventa dominios clínicos", r.clinical_domains.length === 0);
+  check("confianza cero", r.confidence === 0);
+  check("explica el motivo al padre", (r.not_assessable_reason ?? "").length > 40);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+section("CASO 15 · SEGURIDAD · Sin señales de ningún tipo");
+// ══════════════════════════════════════════════════════════════════════════════
+{
+  const input: EngineInput = {
+    age: 12,
+    today: {
+      metric_date: "2026-05-29",
+      total_minutes: 240, night_minutes: 90, sessions: 30,
+      app_breakdown: { "com.zhiliaoapp.musically": 240 },
+      behavioral_signals: null,
+    },
+    history: baseline(20, 100, 10),
+  };
+
+  const r = runClinicalEngine(input);
+  console.log(`  evaluable=${r.assessable} score=${r.emotional_score}`);
+
+  check("no evaluable sin fuente que mida", r.assessable === false);
+  check("sin puntuación inventada", r.emotional_score === null);
+  check("sin alerta de derivación", r.refer_to_professional === false);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+section("CASO 16 · El dispositivo dejó de enviar — se avisa, no se puntúa");
+// ══════════════════════════════════════════════════════════════════════════════
+{
+  const input: EngineInput = {
+    age: 13,
+    today: {
+      metric_date: "2026-05-29",
+      total_minutes: 0, night_minutes: 0, sessions: 0,
+      app_breakdown: null,
+      behavioral_signals: null,
+    },
+    // Antes sí había app nativa
+    history: baseline(14, 180, 25, 55),
+  };
+
+  const r = runClinicalEngine(input);
+  console.log(`  motivo: ${r.not_assessable_reason?.slice(0, 90)}`);
+
+  check("detecta que antes sí medía", /dejado de enviar/i.test(r.not_assessable_reason ?? ""));
+  check("no puntúa", r.emotional_score === null);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+section("CASO 17 · Con app nativa SÍ evalúa (la puerta no bloquea de más)");
+// ══════════════════════════════════════════════════════════════════════════════
+{
+  const input: EngineInput = {
+    age: 13,
+    today: {
+      metric_date: "2026-05-29",
+      total_minutes: 320, night_minutes: 115, sessions: 48,
+      dominant_app: "com.zhiliaoapp.musically",
+      app_breakdown: { "com.zhiliaoapp.musically": 240, "com.whatsapp": 80 },
+      behavioral_signals: {
+        source: "android_native",
+        unlocks: 74, night_unlocks: 9, dark_unlocks: 7,
+        longest_idle_gap_minutes: 300,
+        switches_per_minute: 0.44, distinct_apps: 7,
+        avg_session_seconds: 400, night_minutes: 115,
+      },
+    },
+    history: baseline(14, 180, 25, 45),
+  };
+
+  const r = runClinicalEngine(input);
+  console.log(`  evaluable=${r.assessable} score=${r.emotional_score} riesgo=${r.risk_level}`);
+
+  check("evaluable con app nativa", r.assessable === true);
+  check("calidad clínica", r.data_quality === "clinical");
+  check("emite puntuación", typeof r.emotional_score === "number");
+  check("riesgo alto detectado", r.risk_level === "high");
+  check("evidencia presente", r.evidence.length > 0);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

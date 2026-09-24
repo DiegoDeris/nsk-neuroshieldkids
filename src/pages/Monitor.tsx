@@ -225,12 +225,19 @@ export default function Monitor() {
 
     const interactionsPerMin = sessionMin > 0 ? Math.round(taps.current / sessionMin) : taps.current;
 
+    // Honestidad de la medición: esto NO es el uso del móvil del niño, es el
+    // tiempo que esta página estuvo abierta. Antes se enviaba como si fuera
+    // una app llamada "Safari iOS", lo que hacía que el motor lo tratara como
+    // tiempo de pantalla real. Ahora se identifica por lo que es, y el motor
+    // sabe que con esta fuente no puede evaluar nada.
     const event = {
-      app_name: "Safari iOS",
+      app_name: "__monitor_web__",
       duration_seconds: sessionMin * 60,
       occurred_at: now.toISOString(),
-      event_type: "app_usage",
+      event_type: "monitor_session",
       metadata: {
+        source: "web_monitor",
+        measures_device_usage: false,
         interactions_per_min: interactionsPerMin,
         visibility_changes: visibilityChanges.current,
         orientation_changes: orientationChanges.current,
@@ -239,8 +246,7 @@ export default function Monitor() {
         battery_drain_percent: batteryDrain,
         network_type: (navigator as any).connection?.effectiveType ?? "unknown",
         session_minutes: sessionMin,
-        platform: "ios_web",
-        source: "foreground",
+        platform: /android/i.test(navigator.userAgent) ? "android_web" : "ios_web",
       },
     };
 

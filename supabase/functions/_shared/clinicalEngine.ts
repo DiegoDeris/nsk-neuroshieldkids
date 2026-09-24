@@ -96,9 +96,29 @@ export type DimensionKey =
   | "attention_fragmentation";
 
 export interface EngineResult {
-  emotional_score: number;
-  risk_level: "low" | "medium" | "high";
-  severity_tier: "preventive" | "watch" | "moderate" | "critical";
+  /**
+   * Calidad de la fuente de datos.
+   *
+   *  - "clinical": los datos vienen de una app nativa que mide el dispositivo
+   *    de verdad (apps usadas, desbloqueos, sueño). Se puede evaluar.
+   *  - "insufficient": la fuente no puede medir el uso real del dispositivo.
+   *    NO se emite ningún veredicto. Es el caso del monitor web, que solo
+   *    sabe cuánto tiempo estuvo abierta su propia página.
+   *
+   * Regla de seguridad: sin fuente que mida, no hay diagnóstico. Antes que
+   * dar un número inventado sobre la salud mental de un menor, se dice que
+   * no se sabe.
+   */
+  data_quality: "clinical" | "insufficient";
+  /** false cuando data_quality es "insufficient". */
+  assessable: boolean;
+  /** Motivo legible de por qué no se puede evaluar. */
+  not_assessable_reason?: string;
+
+  /** null si no es evaluable. Nunca se inventa. */
+  emotional_score: number | null;
+  risk_level: "low" | "medium" | "high" | null;
+  severity_tier: "preventive" | "watch" | "moderate" | "critical" | null;
   /** 0-100. Baja con poco historial o sin señales nativas. */
   confidence: number;
   dimensions: Record<DimensionKey, number>;
@@ -242,12 +262,74 @@ function referenceScreenMinutes(age: number): number {
 
 // ── Motor ─────────────────────────────────────────────────────────────────────
 
-export const ENGINE_VERSION = "3.0.0";
+export const ENGINE_VERSION = "3.1.0";
+
+/**
+ * Fuentes que miden el dispositivo de verdad.
+ *
+ * El monitor web NO está aquí y no puede estarlo: una página web solo sabe
+ * cuánto tiempo estuvo ella misma abierta. No ve qué apps usa el niño, ni
+ * cuántas veces desbloquea, ni cuándo duerme. Tratar ese dato como tiempo de
+ * pantalla sería inventarse el diagnóstico.
+ */
+const MEASURING_SOURCES = ["android_native", "ios_native"];
+
+function isMeasuringSource(sig: NativeSignals): boolean {
+  if (sig.source && MEASURING_SOURCES.includes(sig.source)) return true;
+  // Retrocompatibilidad: lotes nativos antiguos sin campo `source`.
+  return typeof sig.unlocks === "number" || typeof sig.sleep_minutes === "number";
+}
 
 export function runClinicalEngine(input: EngineInput): EngineResult {
   const { age, today, history } = input;
   const sig: NativeSignals = today.behavioral_signals ?? {};
-  const hasNative = Boolean(sig.source === "android_native" || sig.unlocks !== undefined);
+  const hasNative = isMeasuringSource(sig);
+
+  // ── PUERTA DE CALIDAD DE DATO ──────────────────────────────────────────────
+  // Sin una fuente que mida el dispositivo, no se emite veredicto. Ni score,
+  // ni nivel de riesgo, ni dominios clínicos. Se declara que no se puede
+  // evaluar y se explica por qué.
+  if (!hasNative) {
+    const tuvoNativoAntes = history.some((h) => isMeasuringSource(h.behavioral_signals ?? {}));
+    return {
+      data_quality: "insufficient",
+      assessable: false,
+      not_assessable_reason: tuvoNativoAntes
+        ? "El dispositivo ha dejado de enviar datos. La app de NeuroShield Kids no está "
+          + "funcionando en el móvil, así que no hay medición sobre la que evaluar."
+        : "Este dispositivo no tiene instalada la app de NeuroShield Kids. Sin ella solo "
+          + "se sabe cuánto tiempo estuvo abierta la página del monitor, que no es el uso "
+          + "real del móvil. No se puede hacer una evaluación con eso.",
+      emotional_score: null,
+      risk_level: null,
+      severity_tier: null,
+      confidence: 0,
+      dimensions: {
+        sleep_disruption: 0,
+        anxiety_signals: 0,
+        mood_volatility: 0,
+        social_withdrawal: 0,
+        dependency: 0,
+        attention_fragmentation: 0,
+      },
+      unavailable_dimensions: [
+        "sleep_disruption", "anxiety_signals", "mood_volatility",
+        "social_withdrawal", "dependency", "attention_fragmentation",
+      ],
+      evidence: [],
+      clinical_domains: [],
+      change_point: null,
+      refer_to_professional: false,
+      referral_reason: "",
+      trace: {
+        engine_version: ENGINE_VERSION,
+        data_days: history.length,
+        has_native_signals: false,
+        baseline_total_minutes: null,
+        computed_at: new Date().toISOString(),
+      },
+    };
+  }
 
   const evidence: Evidence[] = [];
   const dims: Record<DimensionKey, number> = {
@@ -651,6 +733,8 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
   if (dims.social_withdrawal >= 70) referralReasons.push("patrón de aislamiento marcado");
 
   return {
+    data_quality: "clinical",
+    assessable: true,
     emotional_score,
     risk_level,
     severity_tier,

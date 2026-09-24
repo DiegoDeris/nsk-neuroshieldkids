@@ -520,6 +520,26 @@ const ChildDetail = () => {
           </Card>
         )}
 
+        {/* Aviso de dato insuficiente: la fuente no mide el dispositivo.
+            Se muestra en lugar de cualquier puntuación, nunca junto a ella. */}
+        {deep?.assessable === false && (
+          <Card className="p-6 rounded-2xl border-amber-300 bg-amber-50/60 dark:bg-amber-950/20">
+            <h3 className="font-semibold flex items-center gap-2 text-amber-900 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4" /> No se puede evaluar todavía
+            </h3>
+            <p className="text-sm text-amber-900/80 dark:text-amber-200/80 mt-2">
+              {fixMojibake(deep.not_assessable_reason ?? "Faltan datos medidos del dispositivo.")}
+            </p>
+            <p className="text-sm text-amber-900/80 dark:text-amber-200/80 mt-3">
+              Preferimos decirte que no lo sabemos antes que darte una puntuación sin respaldo.
+              Instala la app en el móvil de tu hijo y el análisis empezará a funcionar.
+            </p>
+            <Button asChild variant="outline" className="mt-4">
+              <Link to="/connect">Conectar el dispositivo</Link>
+            </Button>
+          </Card>
+        )}
+
         {/* Score actual + tendencia */}
         <div className="grid md:grid-cols-3 gap-4">
           <Card className="p-6 rounded-2xl shadow-soft md:col-span-1">

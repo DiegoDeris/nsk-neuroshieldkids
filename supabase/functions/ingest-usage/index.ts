@@ -260,14 +260,27 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const dur = Math.max(0, Math.min(86400, Number(ev.duration_seconds ?? 0) | 0));
       const occurred = ev.occurred_at ? String(ev.occurred_at) : now;
       const app = ev.app_name ? String(ev.app_name).slice(0, 80) : null;
-      const meta = ev.metadata && typeof ev.metadata === "object" ? ev.metadata : {};
+      const meta = ev.metadata && typeof ev.metadata === "object"
+        ? ev.metadata as Record<string, unknown>
+        : {};
+
+      // El tipo de evento se respeta en lugar de forzarlo a "app_usage".
+      // Antes todo se guardaba como uso de apps, incluido el tiempo que el
+      // monitor web tenía su propia página abierta — que no es uso del móvil
+      // del niño. Eso inflaba el tiempo de pantalla con algo que no lo era.
+      const declared = ev.event_type ? String(ev.event_type) : "app_usage";
+      const isMonitorSession = declared === "monitor_session"
+        || meta.measures_device_usage === false
+        || meta.source === "web_monitor";
+      const eventType = isMonitorSession ? "monitor_session" : "app_usage";
+
       return {
         child_id: child.id,
         parent_id: child.parent_id,
         occurred_at: occurred,
         app_name: app,
         duration_seconds: dur,
-        event_type: "app_usage",
+        event_type: eventType,
         source: "api",
         metadata: meta,
       };

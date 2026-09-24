@@ -79,6 +79,24 @@ Deno.serve(async (req) => {
       history: past,
     });
 
+    // ── PUERTA DE SEGURIDAD ─────────────────────────────────────────────────
+    // Si la fuente no mide el dispositivo de verdad, se devuelve el estado de
+    // "no evaluable" y se corta aquí. No se llama a la IA, no se inventa una
+    // explicación y no se muestra ninguna puntuación. Un padre debe saber que
+    // no sabemos, en lugar de recibir un número sin respaldo.
+    if (!engine.assessable) {
+      return new Response(JSON.stringify({
+        ...engine,
+        engine_version: ENGINE_VERSION,
+        explanation: engine.not_assessable_reason ?? "No hay datos suficientes para evaluar.",
+        detected_patterns: [],
+        immediate_actions: [],
+        long_term_actions: [],
+        conversation_script: [],
+        actions: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── PASO 2: la IA solo traduce el resultado ─────────────────────────────
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
