@@ -704,50 +704,118 @@ const ChildDetail = () => {
           </Card>
         )}
 
-        {/* Predicción multi-horizonte */}
-        {prediction && (
+        {/* Pronóstico determinista */}
+        {prediction && prediction.forecastable === false && (
+          <Card className="p-6 rounded-2xl border-amber-300 bg-amber-50/60 dark:bg-amber-950/20">
+            <h3 className="font-semibold flex items-center gap-2 text-amber-900 dark:text-amber-200">
+              <TrendingUp className="h-4 w-4" /> Todavía no se puede proyectar
+            </h3>
+            <p className="text-sm text-amber-900/80 dark:text-amber-200/80 mt-2">
+              {fixMojibake(prediction.not_forecastable_reason ?? "Faltan días de análisis.")}
+            </p>
+          </Card>
+        )}
+
+        {prediction && prediction.forecastable && (
           <Card className="p-6">
-            <h3 className="font-semibold mb-4 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-secondary" /> Predicción IA · calidad de datos: {prediction.data_quality}</h3>
+            <h3 className="font-semibold mb-1 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-secondary" /> Pronóstico
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Proyección estadística sobre su patrón reciente, no una certeza.
+              Tendencia {prediction.trend === "worsening" ? "al alza" : prediction.trend === "improving" ? "a la baja" : "estable"}
+              {" "}({prediction.slope_per_day} puntos/día) · confianza {prediction.confidence}%
+            </p>
+
             <div className="grid sm:grid-cols-3 gap-3">
               {(prediction.horizons ?? []).map((h: any) => (
                 <div key={h.days} className="p-4 rounded-lg bg-muted/40">
                   <div className="text-xs text-muted-foreground">A {h.days} días</div>
                   <div className="text-3xl font-bold mt-1">{h.expected_score}</div>
                   <div className="text-xs text-muted-foreground">rango {h.low_score}–{h.high_score}</div>
-                  <Badge className="mt-2" variant={h.risk_level === "high" ? "destructive" : "secondary"}>{h.trend}</Badge>
+                  <Badge className="mt-2" variant={h.risk_level === "high" ? "destructive" : "secondary"}>
+                    {riskLabel(h.risk_level)}
+                  </Badge>
                 </div>
               ))}
             </div>
-            <div className="grid md:grid-cols-2 gap-3 mt-4">
-              <div className="p-4 rounded-lg border border-success/30 bg-success/5">
-                <div className="text-sm font-semibold">Con plan de prevención</div>
-                <div className="text-2xl font-bold mt-1">{prediction.scenario_with_intervention?.expected_score_7d}</div>
-                <div className="text-xs text-muted-foreground mt-1">{prediction.scenario_with_intervention?.rationale}</div>
+
+            {/* Escenario calculado, no imaginado */}
+            {prediction.counterfactual && (
+              <div className="mt-4 p-4 rounded-lg border border-success/30 bg-success/5">
+                <div className="text-sm font-semibold">Si se corrige el factor principal</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {fixMojibake(prediction.counterfactual.change)}, la puntuación de hoy pasaría de{" "}
+                  <span className="font-semibold text-foreground">{prediction.counterfactual.score_now}</span> a{" "}
+                  <span className="font-semibold text-success">{prediction.counterfactual.score_if_applied}</span>
+                  {" "}({prediction.counterfactual.improvement} puntos menos).
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Calculado volviendo a ejecutar el análisis con ese único cambio.
+                </div>
               </div>
-              <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5">
-                <div className="text-sm font-semibold">Sin intervención</div>
-                <div className="text-2xl font-bold mt-1">{prediction.scenario_no_intervention?.expected_score_7d}</div>
-                <div className="text-xs text-muted-foreground mt-1">{prediction.scenario_no_intervention?.rationale}</div>
-              </div>
-            </div>
-            {Array.isArray(prediction.early_warning_signals) && (
-              <div className="mt-4">
-                <h4 className="text-sm font-semibold mb-2">Indicadores tempranos a vigilar</h4>
+            )}
+
+            {Array.isArray(prediction.early_warnings) && prediction.early_warnings.length > 0 && (
+              <div className="mt-6">
+                <h4 className="text-sm font-semibold mb-2">Señales a vigilar</h4>
                 <ul className="space-y-2">
-                  {prediction.early_warning_signals.map((s: any, i: number) => (
-                    <li key={i} className="text-sm p-3 rounded-lg bg-muted/40">
-                      <div className="font-medium">{s.signal}</div>
-                      <div className="text-xs text-muted-foreground">⚠️ {s.threshold}</div>
-                    </li>
-                  ))}
+                  {prediction.early_warnings.map((w: any, i: number) => {
+                    const cruzado = String(w.margin ?? "").trim().startsWith("-");
+                    return (
+                      <li key={i} className={`text-sm p-3 rounded-lg ${cruzado ? "bg-destructive/5 border border-destructive/20" : "bg-muted/40"}`}>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <span className="font-medium">{fixMojibake(w.signal)}</span>
+                          <span className={cruzado ? "text-destructive font-semibold" : "text-muted-foreground"}>
+                            {w.current}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Umbral: {fixMojibake(w.threshold)}
+                        </div>
+                        <div className="text-xs mt-1">
+                          {cruzado
+                            ? <span className="text-destructive">Ya superado por {String(w.margin).replace("-", "")}</span>
+                            : <span className="text-muted-foreground">Margen: {w.margin}</span>}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
+              </div>
+            )}
+
+            {prediction.explanation && (
+              <p className="text-sm text-muted-foreground mt-4">{fixMojibake(prediction.explanation)}</p>
+            )}
+
+            {/* Trazabilidad del método */}
+            {prediction.trace && (
+              <div className="mt-6 pt-4 border-t text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+                <span>{prediction.trace.observations} análisis</span>
+                <span>{prediction.trace.span_days} días de serie</span>
+                {prediction.trace.anomalous_days > 0 && (
+                  <span>{prediction.trace.anomalous_days} día(s) atípico(s)</span>
+                )}
+                <span>Método: Theil–Sen</span>
               </div>
             )}
           </Card>
         )}
 
         {/* Plan semanal del coach */}
-        {coachPlan && (
+        {coachPlan && coachPlan.plannable === false && (
+          <Card className="p-6 rounded-2xl border-amber-300 bg-amber-50/60 dark:bg-amber-950/20">
+            <h3 className="font-semibold flex items-center gap-2 text-amber-900 dark:text-amber-200">
+              <Target className="h-4 w-4" /> Todavía no se puede hacer un plan
+            </h3>
+            <p className="text-sm text-amber-900/80 dark:text-amber-200/80 mt-2">
+              {fixMojibake(coachPlan.not_plannable_reason ?? "Faltan datos medidos del dispositivo.")}
+            </p>
+          </Card>
+        )}
+
+        {coachPlan && coachPlan.plannable !== false && (
           <Card className="p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Plan semanal personalizado</h3>
             <div className="flex flex-wrap gap-2 mb-4">
