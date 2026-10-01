@@ -50,6 +50,11 @@ export interface NativeSignals {
   /** Desbloqueos sin notificación previa: compulsión sin estímulo externo. */
   phantom_pickups?: number;
 
+  /** Veces que la recogida se interrumpió durante el día. */
+  collection_gaps?: number;
+  /** Minutos del día en los que el dispositivo NO estuvo midiendo. */
+  collection_gap_minutes?: number;
+
   // Exclusivo de iOS (HealthKit): sueño medido, no estimado.
   sleep_minutes?: number;
   /** Hora de conciliación en decimal: 23.5 = 23:30. */
@@ -136,6 +141,8 @@ export interface EngineResult {
     data_days: number;
     has_native_signals: boolean;
     baseline_total_minutes: number | null;
+    /** Minutos del día sin medición. 0 = día completo. */
+    collection_gap_minutes?: number;
     computed_at: string;
   };
 }
@@ -262,7 +269,7 @@ function referenceScreenMinutes(age: number): number {
 
 // ── Motor ─────────────────────────────────────────────────────────────────────
 
-export const ENGINE_VERSION = "3.1.0";
+export const ENGINE_VERSION = "3.2.0";
 
 /**
  * Fuentes que miden el dispositivo de verdad.
@@ -273,6 +280,15 @@ export const ENGINE_VERSION = "3.1.0";
  * pantalla sería inventarse el diagnóstico.
  */
 const MEASURING_SOURCES = ["android_native", "ios_native"];
+
+/**
+ * A partir de 3 h sin medir en un mismo día, el día se descarta.
+ * El umbral es deliberadamente conservador: es mejor decir "no lo sé" que
+ * interpretar un apagón de la app como una mejora del niño.
+ */
+const GAP_BLOCKING_MINUTES = 180;
+/** Desde 45 min ya se penaliza la confianza, aunque el día siga siendo evaluable. */
+const GAP_PENALTY_MINUTES = 45;
 
 function isMeasuringSource(sig: NativeSignals): boolean {
   if (sig.source && MEASURING_SOURCES.includes(sig.source)) return true;
@@ -325,6 +341,54 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
         engine_version: ENGINE_VERSION,
         data_days: history.length,
         has_native_signals: false,
+        baseline_total_minutes: null,
+        computed_at: new Date().toISOString(),
+      },
+    };
+  }
+
+  // ── SEGUNDA PUERTA: INTEGRIDAD DEL DÍA ─────────────────────────────────────
+  // Tener una fuente nativa no basta: si esa fuente dejó de medir media jornada,
+  // los desbloqueos y el uso nocturno que faltan se parecen mucho a un buen día.
+  // Un hueco grande no se puede interpretar, así que tampoco se evalúa.
+  const gapMinutes = typeof sig.collection_gap_minutes === "number"
+    ? Math.max(0, sig.collection_gap_minutes)
+    : 0;
+  if (gapMinutes > GAP_BLOCKING_MINUTES) {
+    const horas = (gapMinutes / 60).toFixed(1);
+    return {
+      data_quality: "insufficient",
+      assessable: false,
+      not_assessable_reason:
+        `La app estuvo sin medir ${horas} h de este día, así que falta demasiada `
+        + "información para valorarlo. Suele ocurrir si el móvil se reinició, si se "
+        + "cerró la app a la fuerza o si el ahorro de batería la detuvo. Revisa que "
+        + "NeuroShield Kids esté exenta de la optimización de batería.",
+      emotional_score: null,
+      risk_level: null,
+      severity_tier: null,
+      confidence: 0,
+      dimensions: {
+        sleep_disruption: 0,
+        anxiety_signals: 0,
+        mood_volatility: 0,
+        social_withdrawal: 0,
+        dependency: 0,
+        attention_fragmentation: 0,
+      },
+      unavailable_dimensions: [
+        "sleep_disruption", "anxiety_signals", "mood_volatility",
+        "social_withdrawal", "dependency", "attention_fragmentation",
+      ],
+      evidence: [],
+      clinical_domains: [],
+      change_point: null,
+      refer_to_professional: false,
+      referral_reason: "",
+      trace: {
+        engine_version: ENGINE_VERSION,
+        data_days: history.length,
+        has_native_signals: true,
         baseline_total_minutes: null,
         computed_at: new Date().toISOString(),
       },
@@ -717,6 +781,11 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
   if (dataDays >= 14) confidence += 10;
   if (hasNative) confidence += 25;
   confidence -= unavailable.length * 5;
+  // Huecos de medición por debajo del umbral de bloqueo: el día sigue siendo
+  // evaluable, pero con menos certeza, y eso se dice.
+  if (gapMinutes >= GAP_PENALTY_MINUTES) {
+    confidence -= Math.round((gapMinutes / 60) * 12);
+  }
   confidence = clamp(confidence, 10, 95);
 
   // ── Derivación profesional ─────────────────────────────────────────────────
@@ -751,6 +820,7 @@ export function runClinicalEngine(input: EngineInput): EngineResult {
       data_days: dataDays,
       has_native_signals: hasNative,
       baseline_total_minutes: baselineTotal,
+      collection_gap_minutes: gapMinutes,
       computed_at: new Date().toISOString(),
     },
   };

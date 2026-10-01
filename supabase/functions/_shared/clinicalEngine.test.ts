@@ -654,6 +654,112 @@ section("CASO 17 · Con app nativa SÍ evalúa (la puerta no bloquea de más)");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+section("CASO 18 · Hueco de medición grande — NO debe evaluarse");
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// El riesgo real: la app deja de medir media jornada y lo que queda registrado
+// parece un día tranquilo. Eso se leería como mejoría del niño. Tiene que
+// declararse no evaluable, no "todo bien".
+{
+  const input: EngineInput = {
+    age: 13,
+    today: {
+      metric_date: "2026-05-29",
+      total_minutes: 40,          // bajo solo porque faltan horas de registro
+      night_minutes: 0,
+      sessions: 5,
+      behavioral_signals: {
+        source: "android_native",
+        unlocks: 8,
+        collection_gaps: 2,
+        collection_gap_minutes: 420,   // 7 h sin medir
+      },
+    },
+    history: baseline(14, 300, 60, 90),  // su línea base es de uso intenso
+  };
+
+  const r = runClinicalEngine(input);
+  console.log(`  evaluable=${r.assessable} score=${r.emotional_score}`);
+
+  check("no evaluable con 7 h sin medir", r.assessable === false);
+  check("calidad declarada insuficiente", r.data_quality === "insufficient");
+  check("no emite puntuación", r.emotional_score === null);
+  check("no emite nivel de riesgo", r.risk_level === null);
+  check("no deriva a profesional", r.refer_to_professional === false);
+  check("explica el hueco en horas", (r.not_assessable_reason ?? "").includes("7.0 h"));
+  check("sugiere revisar la batería", (r.not_assessable_reason ?? "").includes("batería"));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+section("CASO 19 · Hueco pequeño — evaluable, pero con menos confianza");
+// ══════════════════════════════════════════════════════════════════════════════
+{
+  const signals = {
+    source: "android_native",
+    unlocks: 70, night_unlocks: 8, dark_unlocks: 6,
+    longest_idle_gap_minutes: 320,
+    switches_per_minute: 0.4, distinct_apps: 7,
+    avg_session_seconds: 380, night_minutes: 100,
+  };
+  const history = baseline(14, 180, 25, 45);
+
+  const sinHueco = runClinicalEngine({
+    age: 13,
+    today: {
+      metric_date: "2026-05-29", total_minutes: 330, night_minutes: 100, sessions: 60,
+      behavioral_signals: { ...signals, collection_gap_minutes: 0 },
+    },
+    history,
+  });
+
+  const conHueco = runClinicalEngine({
+    age: 13,
+    today: {
+      metric_date: "2026-05-29", total_minutes: 330, night_minutes: 100, sessions: 60,
+      behavioral_signals: { ...signals, collection_gaps: 1, collection_gap_minutes: 90 },
+    },
+    history,
+  });
+
+  console.log(`  confianza sin hueco=${sinHueco.confidence} · con 90 min=${conHueco.confidence}`);
+
+  check("sigue siendo evaluable con 90 min de hueco", conHueco.assessable === true);
+  check("la confianza baja respecto al día completo", conHueco.confidence < sinHueco.confidence);
+  check("la puntuación no cambia por el hueco", conHueco.emotional_score === sinHueco.emotional_score);
+  check("el hueco queda en la trazabilidad", conHueco.trace.collection_gap_minutes === 90);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+section("CASO 20 · Día completo — el hueco a cero no penaliza nada");
+// ══════════════════════════════════════════════════════════════════════════════
+{
+  const base = {
+    age: 11,
+    today: {
+      metric_date: "2026-05-29", total_minutes: 75, night_minutes: 0, sessions: 12,
+      behavioral_signals: {
+        source: "android_native", unlocks: 30, distinct_apps: 6,
+        longest_idle_gap_minutes: 540, night_minutes: 0,
+      },
+    },
+    history: baseline(14, 80, 0, 32),
+  };
+
+  const sinCampo = runClinicalEngine(base as EngineInput);
+  const conCero = runClinicalEngine({
+    ...base,
+    today: {
+      ...base.today,
+      behavioral_signals: { ...base.today.behavioral_signals, collection_gap_minutes: 0 },
+    },
+  } as EngineInput);
+
+  check("ausencia del campo y cero son equivalentes", sinCampo.confidence === conCero.confidence);
+  check("trazabilidad informa 0 minutos perdidos", conCero.trace.collection_gap_minutes === 0);
+  check("día completo evaluable", conCero.assessable === true);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 console.log(`\n${"═".repeat(70)}`);
 console.log(`RESULTADO:  ${passed} correctas · ${failed} fallidas`);
 if (failed > 0) {
