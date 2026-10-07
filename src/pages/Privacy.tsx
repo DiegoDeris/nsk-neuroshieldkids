@@ -10,7 +10,7 @@ export default function Privacy() {
       </header>
       <main className="container max-w-3xl py-10 prose prose-slate">
         <h1>Política de Privacidad</h1>
-        <p className="text-slate-500 text-sm">Última actualización: junio 2025</p>
+        <p className="text-slate-500 text-sm">Última actualización: octubre 2026</p>
 
         <h2>1. Responsable del tratamiento</h2>
         <p>
@@ -24,41 +24,120 @@ export default function Privacy() {
         <ul>
           <li><strong>Datos de cuenta:</strong> dirección de correo electrónico y contraseña cifrada.</li>
           <li><strong>Perfiles de hijos:</strong> nombre, edad, género y dispositivos vinculados.</li>
-          <li><strong>Datos de uso del dispositivo:</strong> aplicaciones usadas, tiempo de pantalla y categorías de contenido, recogidos por la app Android instalada en el dispositivo del menor.</li>
-          <li><strong>Alertas y métricas:</strong> patrones de uso, puntuaciones emocionales calculadas por IA y recomendaciones generadas.</li>
+          <li>
+            <strong>Uso del dispositivo:</strong> aplicaciones utilizadas y su duración, tiempo total
+            de pantalla, número de sesiones y categoría de cada aplicación.
+          </li>
+          <li>
+            <strong>Señales de conducta:</strong> número de desbloqueos y encendidos de pantalla,
+            desbloqueos en franja nocturna, nivel de luz ambiental en el momento del desbloqueo,
+            mayor intervalo sin actividad (que se usa como estimación de la ventana de descanso),
+            hora del primer y del último uso del día, y frecuencia de cambio entre aplicaciones.
+          </li>
+          <li>
+            <strong>Metadatos de notificaciones</strong> (solo si concedes ese permiso, que se
+            solicita por separado y semanas después de la instalación): de qué aplicación procede
+            cada aviso, a qué hora llega y cuánto tarda en abrirse.{" "}
+            <strong>Nunca el contenido del mensaje, ni el remitente, ni el texto del aviso.</strong>
+          </li>
+          <li>
+            <strong>Datos de salud</strong> (solo en iPhone y solo si lo autorizas en Salud):
+            minutos de sueño, hora de conciliación, interrupciones del sueño, frecuencia cardíaca
+            en reposo y variabilidad de la frecuencia cardíaca.
+          </li>
+          <li>
+            <strong>Integridad de la medición:</strong> cuándo la app dejó de medir y durante cuántos
+            minutos. Lo necesitamos para no valorar un día del que faltan horas de registro.
+          </li>
+          <li>
+            <strong>Resultados del análisis:</strong> puntuaciones por dimensión, nivel de riesgo,
+            evidencia que lo respalda y recomendaciones generadas.
+          </li>
           <li><strong>Datos de pago:</strong> gestionados íntegramente por Stripe; no almacenamos datos de tarjeta.</li>
         </ul>
 
-        <h2>3. Finalidad y base jurídica</h2>
+        <h2>3. Lo que NO recogemos</h2>
+        <p>
+          Conviene que quede dicho de forma explícita, porque es la pregunta que todo padre hace y
+          la que todo menor debería poder preguntar:
+        </p>
         <ul>
-          <li><strong>Prestación del servicio</strong> (Art. 6.1.b RGPD): procesar datos de uso para ofrecer las funciones de monitoreo, alertas y recomendaciones.</li>
+          <li>No leemos mensajes, conversaciones, correos ni el contenido de ninguna notificación.</li>
+          <li>No accedemos a la cámara, al micrófono ni a fotos o vídeos.</li>
+          <li>No registramos pulsaciones de teclado ni capturamos la pantalla.</li>
+          <li>No recogemos la ubicación ni el historial de navegación.</li>
+          <li>No vendemos datos, no hacemos publicidad y no cedemos datos a anunciantes.</li>
+        </ul>
+
+        <h2>4. Cómo se analizan los datos</h2>
+        <p>
+          Las puntuaciones y el nivel de riesgo los calcula un <strong>motor determinista</strong>:
+          fórmulas fijas y auditables, sin intervención de ninguna inteligencia artificial. Los
+          mismos datos producen siempre el mismo resultado, y cada conclusión puede justificarse
+          señalando la métrica concreta que la originó.
+        </p>
+        <p>
+          Un modelo de lenguaje interviene únicamente <em>después</em>, para redactar en lenguaje
+          claro una explicación ya calculada. No decide, no puntúa y no puede contradecir al motor.
+          Cuando no hay datos suficientes para valorar un día, el sistema lo declara así en lugar de
+          estimar un resultado.
+        </p>
+        <p>
+          <strong>NSK no es un producto sanitario y no emite diagnósticos.</strong> Detecta patrones
+          de uso asociados en la literatura científica a riesgo emocional, y sugiere cuándo puede
+          tener sentido consultar con un profesional. No sustituye a una valoración clínica.
+        </p>
+
+        <h2>5. Finalidad y base jurídica</h2>
+        <ul>
+          <li><strong>Prestación del servicio</strong> (Art. 6.1.b RGPD): procesar datos de uso para ofrecer las funciones de monitorización, alertas y recomendaciones.</li>
           <li><strong>Interés legítimo</strong> (Art. 6.1.f RGPD): mejorar la seguridad y la calidad del servicio.</li>
-          <li><strong>Consentimiento</strong> (Art. 6.1.a RGPD): para el análisis de emociones basado en IA.</li>
+          <li><strong>Consentimiento</strong> (Art. 6.1.a RGPD): para los metadatos de notificaciones, que se solicitan por separado y son revocables en cualquier momento.</li>
+          <li>
+            <strong>Consentimiento explícito</strong> (Art. 9.2.a RGPD) para los datos de salud
+            (sueño y frecuencia cardíaca en iPhone). Son una categoría especial de datos: no se
+            recogen salvo que los autorices expresamente en la app Salud, y retirar esa autorización
+            detiene su recogida de inmediato.
+          </li>
           <li><strong>Obligación legal</strong> (Art. 6.1.c RGPD): conservación de datos de facturación.</li>
         </ul>
 
-        <h2>4. Datos de menores</h2>
+        <h2>6. Datos de menores</h2>
         <p>
-          NSK está diseñado para que los padres o tutores legales monitoreen dispositivos de sus hijos.
-          Tratamos datos de menores exclusivamente bajo la responsabilidad parental y en cumplimiento del
-          Art. 8 RGPD y la normativa local aplicable. No vendemos ni cedemos datos de menores a terceros.
+          NSK está diseñado para que los padres o tutores legales monitoricen dispositivos de sus
+          hijos. Tratamos datos de menores exclusivamente bajo la responsabilidad parental y en
+          cumplimiento del Art. 8 RGPD y la normativa local aplicable. No vendemos ni cedemos datos
+          de menores a terceros, y no se usan para publicidad ni para entrenar modelos.
+        </p>
+        <p>
+          La app es visible en el dispositivo del menor: tiene icono propio en el lanzador y muestra
+          una notificación permanente mientras está midiendo. No funciona de forma oculta, y
+          consideramos que esa transparencia es parte del producto, no una concesión.
         </p>
 
-        <h2>5. Transferencias internacionales</h2>
+        <h2>7. Seguridad</h2>
+        <p>
+          Todos los datos viajan cifrados (HTTPS/TLS) y se almacenan cifrados en reposo. El acceso
+          está restringido por políticas a nivel de fila: cada cuenta solo puede leer los datos de
+          sus propios hijos. Las contraseñas se almacenan con funciones de derivación de clave, nunca
+          en claro.
+        </p>
+
+        <h2>8. Transferencias internacionales</h2>
         <p>
           Los datos se almacenan en servidores de Supabase (UE) y se procesan puntualmente por la API
           de Google Gemini (EEUU), amparada en las Cláusulas Contractuales Tipo aprobadas por la Comisión
           Europea. Los pagos se procesan por Stripe (EEUU), bajo las mismas garantías.
         </p>
 
-        <h2>6. Conservación de datos</h2>
+        <h2>9. Conservación de datos</h2>
         <p>
           Los datos de uso se conservan durante 12 meses desde su generación. Los datos de cuenta se
           conservan mientras la cuenta esté activa y se eliminan íntegramente al ejercer el derecho de
           supresión o al cerrar la cuenta.
         </p>
 
-        <h2>7. Tus derechos (RGPD Arts. 15–22)</h2>
+        <h2>10. Tus derechos (RGPD Arts. 15–22)</h2>
         <p>Puedes ejercer en cualquier momento los derechos de:</p>
         <ul>
           <li><strong>Acceso</strong> a tus datos personales.</li>
@@ -79,19 +158,19 @@ export default function Privacy() {
           <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer">www.aepd.es</a>.
         </p>
 
-        <h2>8. Cookies</h2>
+        <h2>11. Cookies</h2>
         <p>
           Esta aplicación no utiliza cookies de seguimiento ni publicidad. Únicamente se almacena en
           el navegador la sesión de autenticación necesaria para el funcionamiento del servicio.
         </p>
 
-        <h2>9. Cambios en esta política</h2>
+        <h2>12. Cambios en esta política</h2>
         <p>
           Cualquier cambio relevante se notificará por correo electrónico con al menos 30 días de
           antelación. La versión actualizada siempre estará disponible en esta página.
         </p>
 
-        <h2>10. Contacto</h2>
+        <h2>13. Contacto</h2>
         <p>
           Para cualquier consulta sobre privacidad:{" "}
           <a href="mailto:privacidad@nsk.app">privacidad@nsk.app</a>
