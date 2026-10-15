@@ -60,22 +60,76 @@
     "footer": "© {{year}} NeuroShield Kids · Kids' digital wellbeing with AI"
   },
   "features": {
-    "ai":         { "title": "Emotional AI score",          "text": "Real-time 0-100 wellbeing measurement based on actual usage patterns. Explainable and actionable." },
-    "predictive": { "title": "Anxiety & dependency",        "text": "Detects digital anxiety, screen dependency and impulsivity through compulsive unlocks and excessive usage time." },
-    "alerts":     { "title": "Sleep disruption",            "text": "Identifies night usage (10pm–7am) indicating digital insomnia, agitation or avoidance behaviours." },
-    "trends":     { "title": "Compulsive sessions",         "text": "Records how many times the phone is opened in a short time — early sign of anxious or escapist use." },
-    "recs":       { "title": "Behavioural stress",          "text": "Detects sudden changes in habitual patterns: indicator of emotional stress, conflict or crisis." },
-    "game":       { "title": "Digital isolation",           "text": "Identifies prolonged solitary usage that may correlate with social withdrawal or depression." },
-    "learn":      { "title": "Actionable recommendations",  "text": "Concrete steps for today: what to say, what to change, which rule to activate. AI-generated per child." },
-    "privacy":    { "title": "No spyware — GDPR",           "text": "Only usage metadata: time, sessions, schedule, behaviour. Never messages, photos or private content." }
+    "ai": {
+      "title": "Emotional AI score",
+      "text": "Real-time 0-100 wellbeing measurement based on actual usage patterns. Explainable and actionable."
+    },
+    "predictive": {
+      "title": "Anxiety & dependency",
+      "text": "Detects digital anxiety, screen dependency and impulsivity through compulsive unlocks and excessive usage time."
+    },
+    "alerts": {
+      "title": "Sleep disruption",
+      "text": "Identifies night usage (10pm–7am) indicating digital insomnia, agitation or avoidance behaviours."
+    },
+    "trends": {
+      "title": "Compulsive sessions",
+      "text": "Records how many times the phone is opened in a short time — early sign of anxious or escapist use."
+    },
+    "recs": {
+      "title": "Behavioural stress",
+      "text": "Detects sudden changes in habitual patterns: indicator of emotional stress, conflict or crisis."
+    },
+    "game": {
+      "title": "Digital isolation",
+      "text": "Identifies prolonged solitary usage that may correlate with social withdrawal or depression."
+    },
+    "learn": {
+      "title": "Actionable recommendations",
+      "text": "Concrete steps for today: what to say, what to change, which rule to activate. AI-generated per child."
+    },
+    "privacy": {
+      "title": "No spyware — GDPR",
+      "text": "Only usage metadata: time, sessions, schedule, behaviour. Never messages, photos or private content."
+    }
   },
   "plans": {
-    "free": { "name": "Free", "period": "forever", "cta": "Start free", "current": "Your current plan",
-      "p1": "1 child", "p2": "3-day history", "p3": "Weekly score without explanation", "p4": "Alerts: count and severity" },
-    "basic": { "name": "Basic", "period": "/month", "cta": "Choose Basic", "ctaStart": "Start Basic",
-      "p1": "Up to 3 kids", "p2": "30-day history", "p3": "Daily score with explanation", "p4": "Full alert details", "p5": "Schedule and limit rules", "p6": "Standard support" },
-    "premium": { "name": "Premium", "period": "/month", "cta": "Choose Premium", "ctaStart": "Start Premium",
-      "p1": "Unlimited kids", "p2": "Unlimited history", "p3": "Daily score + AI prediction", "p4": "Predictive alerts", "p5": "Actionable AI recommendations", "p6": "PDF reports", "p7": "Advanced rules", "p8": "Priority support" },
+    "free": {
+      "name": "Free",
+      "period": "forever",
+      "cta": "Start free",
+      "current": "Your current plan",
+      "p1": "1 child",
+      "p2": "3-day history",
+      "p3": "Weekly score without explanation",
+      "p4": "Alerts: count and severity"
+    },
+    "basic": {
+      "name": "Basic",
+      "period": "/month",
+      "cta": "Choose Basic",
+      "ctaStart": "Start Basic",
+      "p1": "Up to 3 kids",
+      "p2": "30-day history",
+      "p3": "Daily score with explanation",
+      "p4": "Full alert details",
+      "p5": "Schedule and limit rules",
+      "p6": "Standard support"
+    },
+    "premium": {
+      "name": "Premium",
+      "period": "/month",
+      "cta": "Choose Premium",
+      "ctaStart": "Start Premium",
+      "p1": "Unlimited kids",
+      "p2": "Unlimited history",
+      "p3": "Daily score + AI prediction",
+      "p4": "Predictive alerts",
+      "p5": "Actionable AI recommendations",
+      "p6": "PDF reports",
+      "p7": "Advanced rules",
+      "p8": "Priority support"
+    },
     "annualSave": "Save {{months}} months",
     "monthly": "Monthly",
     "annual": "Annual",
@@ -284,13 +338,32 @@
     "windowMin": "Window (min)",
     "maxOpens": "Max opens",
     "types": {
-      "forbidden_app": { "label": "Forbidden apps", "desc": "Alert when a listed app is opened" },
-      "daily_time_limit": { "label": "Daily total limit", "desc": "Alert when X screen min/day are exceeded" },
-      "app_time_limit": { "label": "Per-app limit", "desc": "Alert when X min on a specific app are exceeded" },
-      "restricted_hours": { "label": "Restricted hours", "desc": "Alert if there's activity in a forbidden window" },
-      "session_burst": { "label": "Compulsive use", "desc": "Alert if phone is opened X times in a few min" }
+      "forbidden_app": {
+        "label": "Forbidden apps",
+        "desc": "Alert when a listed app is opened"
+      },
+      "daily_time_limit": {
+        "label": "Daily total limit",
+        "desc": "Alert when X screen min/day are exceeded"
+      },
+      "app_time_limit": {
+        "label": "Per-app limit",
+        "desc": "Alert when X min on a specific app are exceeded"
+      },
+      "restricted_hours": {
+        "label": "Restricted hours",
+        "desc": "Alert if there's activity in a forbidden window"
+      },
+      "session_burst": {
+        "label": "Compulsive use",
+        "desc": "Alert if phone is opened X times in a few min"
+      }
     },
-    "sev": { "preventive": "Preventive", "moderate": "Moderate", "critical": "Critical" },
+    "sev": {
+      "preventive": "Preventive",
+      "moderate": "Moderate",
+      "critical": "Critical"
+    },
     "cfg": {
       "apps": "Apps: {{list}}",
       "daily": "Max {{m}} min/day",
@@ -311,8 +384,12 @@
     "markDone": "Mark done",
     "markUndone": "Done",
     "cat": {
-      "all": "All", "communication": "Communication", "sleep": "Sleep",
-      "risks": "Risks", "wellbeing": "Wellbeing", "emotion": "Emotion"
+      "all": "All",
+      "communication": "Communication",
+      "sleep": "Sleep",
+      "risks": "Risks",
+      "wellbeing": "Wellbeing",
+      "emotion": "Emotion"
     },
     "lessons": {
       "talk": {
@@ -493,7 +570,11 @@
       }
     }
   },
-  "risk": { "low": "Healthy", "medium": "Moderate", "high": "High risk" },
+  "risk": {
+    "low": "Healthy",
+    "medium": "Moderate",
+    "high": "High risk"
+  },
   "devices": {
     "title": "Monitored devices",
     "subtitle": "Connect each phone and receive metrics in near real time with predictive AI.",
@@ -518,7 +599,11 @@
     "drivers": "Key drivers detected",
     "plan": "Suggested prevention plan",
     "confidence": "Confidence",
-    "trend": { "improving": "Improving", "stable": "Stable", "worsening": "Worsening" },
+    "trend": {
+      "improving": "Improving",
+      "stable": "Stable",
+      "worsening": "Worsening"
+    },
     "liveFeed": "Live event feed",
     "noEvents": "No recent events. Connect the device or run a test."
   },
@@ -539,18 +624,54 @@
     "added": "Quest added",
     "markDay": "Add day",
     "presets": {
-      "screen_break": { "title": "Screen break every hour", "desc": "Stand up and move for 5 minutes after every hour of use. Body and mind both benefit." },
-      "no_phone_dinner": { "title": "Phone-free dinner", "desc": "All phones off the table during family dinner. More conversation, better connection." },
-      "sleep_no_phone": { "title": "Sleep without phone in room", "desc": "Charge the phone outside the bedroom. Sleep improves from the very first night." },
-      "outdoor": { "title": "30 minutes outdoors", "desc": "Every day, 30 minutes without a screen and outside. Walk, sport, anything." },
-      "homework_first": { "title": "Homework before screen", "desc": "Tasks first, phone after. No exceptions this week." },
-      "social_pause": { "title": "One day without social media", "desc": "A full day without opening TikTok, Instagram or Snapchat. Just one day." },
-      "no_night_screen": { "title": "No screen after 10pm", "desc": "Phone off or charging outside the room before 10pm. No negotiation." },
-      "slow_morning": { "title": "No phone until after breakfast", "desc": "The first hour of the day without the phone. Start the day calmly, not with notifications." },
-      "max_screen_day": { "title": "Max 90 minutes of screen today", "desc": "A full day with less than an hour and a half of phone time in total. A one-day challenge." },
-      "pause_before_pick": { "title": "Wait 5 minutes before picking it up", "desc": "Every time they feel the urge, wait 5 minutes before picking up the phone. Train the pause." },
-      "read_15min":        { "title": "15 minutes of reading a day", "desc": "Every day, 15 minutes reading something on paper or a digital book. No notifications, no interruptions." },
-      "sport_day":         { "title": "Physical activity today", "desc": "Any sport or physical movement for at least 30 minutes. The body needs its time too." }
+      "screen_break": {
+        "title": "Screen break every hour",
+        "desc": "Stand up and move for 5 minutes after every hour of use. Body and mind both benefit."
+      },
+      "no_phone_dinner": {
+        "title": "Phone-free dinner",
+        "desc": "All phones off the table during family dinner. More conversation, better connection."
+      },
+      "sleep_no_phone": {
+        "title": "Sleep without phone in room",
+        "desc": "Charge the phone outside the bedroom. Sleep improves from the very first night."
+      },
+      "outdoor": {
+        "title": "30 minutes outdoors",
+        "desc": "Every day, 30 minutes without a screen and outside. Walk, sport, anything."
+      },
+      "homework_first": {
+        "title": "Homework before screen",
+        "desc": "Tasks first, phone after. No exceptions this week."
+      },
+      "social_pause": {
+        "title": "One day without social media",
+        "desc": "A full day without opening TikTok, Instagram or Snapchat. Just one day."
+      },
+      "no_night_screen": {
+        "title": "No screen after 10pm",
+        "desc": "Phone off or charging outside the room before 10pm. No negotiation."
+      },
+      "slow_morning": {
+        "title": "No phone until after breakfast",
+        "desc": "The first hour of the day without the phone. Start the day calmly, not with notifications."
+      },
+      "max_screen_day": {
+        "title": "Max 90 minutes of screen today",
+        "desc": "A full day with less than an hour and a half of phone time in total. A one-day challenge."
+      },
+      "pause_before_pick": {
+        "title": "Wait 5 minutes before picking it up",
+        "desc": "Every time they feel the urge, wait 5 minutes before picking up the phone. Train the pause."
+      },
+      "read_15min": {
+        "title": "15 minutes of reading a day",
+        "desc": "Every day, 15 minutes reading something on paper or a digital book. No notifications, no interruptions."
+      },
+      "sport_day": {
+        "title": "Physical activity today",
+        "desc": "Any sport or physical movement for at least 30 minutes. The body needs its time too."
+      }
     }
   },
   "wizard": {
@@ -612,18 +733,18 @@
     }
   },
   "quick": {
-    "title": "Connect {{name}}'s phone in 30 seconds",
-    "subtitle": "The child scans the QR with the camera. No install needed. Works on iOS and Android.",
+    "title": "Connect {{name}}'s phone",
+    "subtitle": "Scan this QR with the child's phone camera. It leads to the app install and pairs on its own.",
     "live": "Live",
     "lastSeen": "Last signal",
     "notConnected": "Not connected yet",
     "scanWithKid": "Scan with the kid's camera",
-    "step1Title": "The child opens the phone camera",
-    "step1Body": "No app to install. Just the normal camera. Point it at the QR code above.",
-    "step2Title": "Tap the link that appears on screen",
-    "step2Body": "The NeuroShield Kids screen opens in the browser. You'll see the green 'Connected' dot within seconds.",
-    "step3Title": "Save it to the home screen (optional but recommended)",
-    "step3Body": "On iPhone: tap Share → Add to Home Screen. On Android: accept the install prompt when it appears. This allows background monitoring too.",
+    "step1Title": "Scan the QR with the child's phone camera",
+    "step1Body": "The normal camera is enough. A page with the download button will open.",
+    "step2Title": "Install NeuroShield Kids",
+    "step2Body": "Android will ask permission to install from the browser: accept it. The app stays visible on the phone, with its own icon.",
+    "step3Title": "Grant the two permissions it asks for",
+    "step3Body": "App usage access and battery-optimisation exemption. Without the second one, measuring stops after a few days. The app guides you by voice.",
     "sendTest": "Send test now",
     "listen": "Listen for first signal",
     "listening": "Listening…",
@@ -638,5 +759,8 @@
     "guided": "Need step-by-step? Open guided wizard",
     "backToQuick": "Back to quick connect"
   },
-  "notFound": { "title": "Page not found", "back": "Back to home" }
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to home"
+  }
 }

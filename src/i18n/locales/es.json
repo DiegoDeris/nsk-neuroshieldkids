@@ -60,22 +60,76 @@
     "footer": "© {{year}} NeuroShield Kids · Bienestar digital infantil con IA"
   },
   "features": {
-    "ai":         { "title": "Score emocional IA",          "text": "Medición 0-100 de bienestar digital basada en patrones de uso reales. Explicable, accionable y en tiempo real." },
-    "predictive": { "title": "Ansiedad y dependencia",      "text": "Detecta ansiedad digital, dependencia de pantalla e impulsividad mediante aperturas compulsivas y tiempo de uso excesivo." },
-    "alerts":     { "title": "Alteración del sueño",        "text": "Identifica uso nocturno (22h–7h) que indica insomnio digital, agitación o conductas de evitación." },
-    "trends":     { "title": "Sesiones compulsivas",        "text": "Registra cuántas veces se abre el móvil en poco tiempo — señal temprana de uso ansioso o escapismo digital." },
-    "recs":       { "title": "Estrés conductual",           "text": "Detecta cambios bruscos en los patrones habituales: indicador de estrés emocional, conflictos o crisis." },
-    "game":       { "title": "Aislamiento digital",         "text": "Identifica uso prolongado y solitario: sesiones extensas sin interrupciones, ausencia de pausas activas y patrones de uso que desplazan otras actividades." },
-    "learn":      { "title": "Recomendaciones accionables", "text": "Pasos concretos para hoy: qué decirle, qué cambiar, qué regla activar. Generados por IA para cada hijo." },
-    "privacy":    { "title": "Sin spyware — GDPR",          "text": "Solo metadatos de uso: tiempo, sesiones, horario, comportamiento. Nunca mensajes, fotos ni contenido privado." }
+    "ai": {
+      "title": "Score emocional IA",
+      "text": "Medición 0-100 de bienestar digital basada en patrones de uso reales. Explicable, accionable y en tiempo real."
+    },
+    "predictive": {
+      "title": "Ansiedad y dependencia",
+      "text": "Detecta ansiedad digital, dependencia de pantalla e impulsividad mediante aperturas compulsivas y tiempo de uso excesivo."
+    },
+    "alerts": {
+      "title": "Alteración del sueño",
+      "text": "Identifica uso nocturno (22h–7h) que indica insomnio digital, agitación o conductas de evitación."
+    },
+    "trends": {
+      "title": "Sesiones compulsivas",
+      "text": "Registra cuántas veces se abre el móvil en poco tiempo — señal temprana de uso ansioso o escapismo digital."
+    },
+    "recs": {
+      "title": "Estrés conductual",
+      "text": "Detecta cambios bruscos en los patrones habituales: indicador de estrés emocional, conflictos o crisis."
+    },
+    "game": {
+      "title": "Aislamiento digital",
+      "text": "Identifica uso prolongado y solitario: sesiones extensas sin interrupciones, ausencia de pausas activas y patrones de uso que desplazan otras actividades."
+    },
+    "learn": {
+      "title": "Recomendaciones accionables",
+      "text": "Pasos concretos para hoy: qué decirle, qué cambiar, qué regla activar. Generados por IA para cada hijo."
+    },
+    "privacy": {
+      "title": "Sin spyware — GDPR",
+      "text": "Solo metadatos de uso: tiempo, sesiones, horario, comportamiento. Nunca mensajes, fotos ni contenido privado."
+    }
   },
   "plans": {
-    "free": { "name": "Gratis", "period": "siempre", "cta": "Empezar gratis", "current": "Tu plan actual",
-      "p1": "1 hijo/a", "p2": "Historial 3 días", "p3": "Score semanal sin explicación", "p4": "Alertas: número y severidad" },
-    "basic": { "name": "Básico", "period": "/mes", "cta": "Elegir Básico", "ctaStart": "Empezar Básico",
-      "p1": "Hasta 3 hijos", "p2": "Historial 30 días", "p3": "Score diario con explicación", "p4": "Alertas con detalle completo", "p5": "Reglas de horarios y límites", "p6": "Soporte normal" },
-    "premium": { "name": "Premium", "period": "/mes", "cta": "Elegir Premium", "ctaStart": "Empezar Premium",
-      "p1": "Hijos ilimitados", "p2": "Historial ilimitado", "p3": "Score diario + predicción IA", "p4": "Alertas predictivas", "p5": "Recomendaciones IA accionables", "p6": "Reportes PDF", "p7": "Reglas avanzadas", "p8": "Soporte prioritario" },
+    "free": {
+      "name": "Gratis",
+      "period": "siempre",
+      "cta": "Empezar gratis",
+      "current": "Tu plan actual",
+      "p1": "1 hijo/a",
+      "p2": "Historial 3 días",
+      "p3": "Score semanal sin explicación",
+      "p4": "Alertas: número y severidad"
+    },
+    "basic": {
+      "name": "Básico",
+      "period": "/mes",
+      "cta": "Elegir Básico",
+      "ctaStart": "Empezar Básico",
+      "p1": "Hasta 3 hijos",
+      "p2": "Historial 30 días",
+      "p3": "Score diario con explicación",
+      "p4": "Alertas con detalle completo",
+      "p5": "Reglas de horarios y límites",
+      "p6": "Soporte normal"
+    },
+    "premium": {
+      "name": "Premium",
+      "period": "/mes",
+      "cta": "Elegir Premium",
+      "ctaStart": "Empezar Premium",
+      "p1": "Hijos ilimitados",
+      "p2": "Historial ilimitado",
+      "p3": "Score diario + predicción IA",
+      "p4": "Alertas predictivas",
+      "p5": "Recomendaciones IA accionables",
+      "p6": "Reportes PDF",
+      "p7": "Reglas avanzadas",
+      "p8": "Soporte prioritario"
+    },
     "annualSave": "Ahorra {{months}} meses",
     "monthly": "Mensual",
     "annual": "Anual",
@@ -284,13 +338,32 @@
     "windowMin": "Ventana (min)",
     "maxOpens": "Aperturas máx",
     "types": {
-      "forbidden_app": { "label": "Apps prohibidas", "desc": "Alerta si se abre una app del listado" },
-      "daily_time_limit": { "label": "Límite diario total", "desc": "Alerta al superar X min de pantalla al día" },
-      "app_time_limit": { "label": "Límite por app", "desc": "Alerta al superar X min en una app concreta" },
-      "restricted_hours": { "label": "Horario restringido", "desc": "Alerta si hay actividad en franja prohibida" },
-      "session_burst": { "label": "Uso compulsivo", "desc": "Alerta si abre el móvil X veces en pocos min" }
+      "forbidden_app": {
+        "label": "Apps prohibidas",
+        "desc": "Alerta si se abre una app del listado"
+      },
+      "daily_time_limit": {
+        "label": "Límite diario total",
+        "desc": "Alerta al superar X min de pantalla al día"
+      },
+      "app_time_limit": {
+        "label": "Límite por app",
+        "desc": "Alerta al superar X min en una app concreta"
+      },
+      "restricted_hours": {
+        "label": "Horario restringido",
+        "desc": "Alerta si hay actividad en franja prohibida"
+      },
+      "session_burst": {
+        "label": "Uso compulsivo",
+        "desc": "Alerta si abre el móvil X veces en pocos min"
+      }
     },
-    "sev": { "preventive": "Preventiva", "moderate": "Moderada", "critical": "Crítica" },
+    "sev": {
+      "preventive": "Preventiva",
+      "moderate": "Moderada",
+      "critical": "Crítica"
+    },
     "cfg": {
       "apps": "Apps: {{list}}",
       "daily": "Máx {{m}} min/día",
@@ -311,8 +384,12 @@
     "markDone": "Marcar hecha",
     "markUndone": "Hecha",
     "cat": {
-      "all": "Todas", "communication": "Comunicación", "sleep": "Sueño",
-      "risks": "Riesgos", "wellbeing": "Bienestar", "emotion": "Emoción"
+      "all": "Todas",
+      "communication": "Comunicación",
+      "sleep": "Sueño",
+      "risks": "Riesgos",
+      "wellbeing": "Bienestar",
+      "emotion": "Emoción"
     },
     "lessons": {
       "talk": {
@@ -493,7 +570,11 @@
       }
     }
   },
-  "risk": { "low": "Saludable", "medium": "Moderado", "high": "Riesgo alto" },
+  "risk": {
+    "low": "Saludable",
+    "medium": "Moderado",
+    "high": "Riesgo alto"
+  },
   "devices": {
     "title": "Dispositivos monitorizados",
     "subtitle": "Conecta cada móvil y recibe métricas en tiempo casi real con IA predictiva.",
@@ -518,7 +599,11 @@
     "drivers": "Factores clave detectados",
     "plan": "Plan de prevención sugerido",
     "confidence": "Confianza",
-    "trend": { "improving": "Mejorando", "stable": "Estable", "worsening": "Empeorando" },
+    "trend": {
+      "improving": "Mejorando",
+      "stable": "Estable",
+      "worsening": "Empeorando"
+    },
     "liveFeed": "Eventos en vivo",
     "noEvents": "Sin eventos recientes. Conecta el dispositivo o haz una prueba."
   },
@@ -539,18 +624,54 @@
     "added": "Reto añadido",
     "markDay": "Sumar día",
     "presets": {
-      "screen_break": { "title": "Pausa de pantalla cada hora", "desc": "Levantarse 5 minutos y moverse cada hora de uso. El cuerpo y la mente lo agradecen." },
-      "no_phone_dinner": { "title": "Cenar sin móvil", "desc": "Todos los móviles fuera de la mesa durante la cena. Se habla más y mejor." },
-      "sleep_no_phone": { "title": "Dormir sin móvil en el cuarto", "desc": "El móvil se carga fuera del dormitorio. El sueño mejora desde la primera noche." },
-      "outdoor": { "title": "30 minutos al aire libre", "desc": "Cada día, 30 minutos sin pantalla y al exterior. Paseo, deporte, lo que sea." },
-      "homework_first": { "title": "Deberes antes que pantalla", "desc": "Primero las tareas, después el móvil. Sin excepciones esta semana." },
-      "social_pause": { "title": "Un día sin redes sociales", "desc": "Un día entero sin abrir TikTok, Instagram ni Snapchat. Solo un día." },
-      "no_night_screen": { "title": "Sin pantalla después de las 22h", "desc": "El móvil se apaga o queda cargando fuera del cuarto antes de las 22h. Sin negociación." },
-      "slow_morning": { "title": "Sin móvil hasta terminar el desayuno", "desc": "La primera hora del día sin mirar el móvil. Empieza el día con calma, no con notificaciones." },
-      "max_screen_day": { "title": "Máximo 90 minutos de pantalla hoy", "desc": "Un día entero con menos de hora y media de móvil en total. Un reto de un solo día." },
-      "pause_before_pick": { "title": "Esperar 5 minutos antes de coger el móvil", "desc": "Cada vez que sienta el impulso, esperar 5 minutos antes de cogerlo. Entrena la pausa." },
-      "read_15min":        { "title": "15 minutos de lectura al día", "desc": "Cada día, 15 minutos de leer algo en papel o libro digital. Sin notificaciones ni interrupciones." },
-      "sport_day":         { "title": "Actividad física hoy", "desc": "Cualquier deporte o movimiento físico durante al menos 30 minutos. El cuerpo también necesita su tiempo." }
+      "screen_break": {
+        "title": "Pausa de pantalla cada hora",
+        "desc": "Levantarse 5 minutos y moverse cada hora de uso. El cuerpo y la mente lo agradecen."
+      },
+      "no_phone_dinner": {
+        "title": "Cenar sin móvil",
+        "desc": "Todos los móviles fuera de la mesa durante la cena. Se habla más y mejor."
+      },
+      "sleep_no_phone": {
+        "title": "Dormir sin móvil en el cuarto",
+        "desc": "El móvil se carga fuera del dormitorio. El sueño mejora desde la primera noche."
+      },
+      "outdoor": {
+        "title": "30 minutos al aire libre",
+        "desc": "Cada día, 30 minutos sin pantalla y al exterior. Paseo, deporte, lo que sea."
+      },
+      "homework_first": {
+        "title": "Deberes antes que pantalla",
+        "desc": "Primero las tareas, después el móvil. Sin excepciones esta semana."
+      },
+      "social_pause": {
+        "title": "Un día sin redes sociales",
+        "desc": "Un día entero sin abrir TikTok, Instagram ni Snapchat. Solo un día."
+      },
+      "no_night_screen": {
+        "title": "Sin pantalla después de las 22h",
+        "desc": "El móvil se apaga o queda cargando fuera del cuarto antes de las 22h. Sin negociación."
+      },
+      "slow_morning": {
+        "title": "Sin móvil hasta terminar el desayuno",
+        "desc": "La primera hora del día sin mirar el móvil. Empieza el día con calma, no con notificaciones."
+      },
+      "max_screen_day": {
+        "title": "Máximo 90 minutos de pantalla hoy",
+        "desc": "Un día entero con menos de hora y media de móvil en total. Un reto de un solo día."
+      },
+      "pause_before_pick": {
+        "title": "Esperar 5 minutos antes de coger el móvil",
+        "desc": "Cada vez que sienta el impulso, esperar 5 minutos antes de cogerlo. Entrena la pausa."
+      },
+      "read_15min": {
+        "title": "15 minutos de lectura al día",
+        "desc": "Cada día, 15 minutos de leer algo en papel o libro digital. Sin notificaciones ni interrupciones."
+      },
+      "sport_day": {
+        "title": "Actividad física hoy",
+        "desc": "Cualquier deporte o movimiento físico durante al menos 30 minutos. El cuerpo también necesita su tiempo."
+      }
     }
   },
   "wizard": {
@@ -612,18 +733,18 @@
     }
   },
   "quick": {
-    "title": "Conecta el móvil de {{name}} en 30 segundos",
-    "subtitle": "El menor escanea el QR con la cámara. Sin instalar nada. Funciona en iOS y Android.",
+    "title": "Conecta el móvil de {{name}}",
+    "subtitle": "Escanea este QR con la cámara del móvil del menor. Lleva a instalar la app y la vincula sola.",
     "live": "En vivo",
     "lastSeen": "Última señal",
     "notConnected": "Sin conectar todavía",
     "scanWithKid": "Escanea con la cámara del menor",
-    "step1Title": "El menor abre la cámara del móvil",
-    "step1Body": "Sin instalar ninguna app. Solo la cámara normal. Apunta al código QR de arriba.",
-    "step2Title": "Toca el enlace que aparece en pantalla",
-    "step2Body": "Se abre la pantalla de NeuroShield Kids en el navegador. Verás el punto verde de 'Conectado' en segundos.",
-    "step3Title": "Guárdalo en el inicio del móvil (opcional pero recomendado)",
-    "step3Body": "En iPhone: pulsa Compartir → Añadir a pantalla de inicio. En Android: acepta la instalación cuando aparezca. Así funciona también en segundo plano.",
+    "step1Title": "Escanea el QR con la cámara del móvil del menor",
+    "step1Body": "La cámara normal basta. Se abrirá una página con el botón de descarga.",
+    "step2Title": "Instala NeuroShield Kids",
+    "step2Body": "Android pedirá permiso para instalar desde el navegador: acéptalo. La app queda visible en el móvil, con su icono.",
+    "step3Title": "Concede los dos permisos que pide",
+    "step3Body": "Acceso al uso de apps y exención de ahorro de batería. Sin el segundo, la medición se para a los pocos días. La app te guía por voz.",
     "sendTest": "Enviar prueba ahora",
     "listen": "Escuchar primera señal",
     "listening": "Escuchando…",
@@ -638,5 +759,8 @@
     "guided": "¿Necesitas paso a paso? Abrir asistente guiado",
     "backToQuick": "Volver a conexión rápida"
   },
-  "notFound": { "title": "Página no encontrada", "back": "Volver al inicio" }
+  "notFound": {
+    "title": "Página no encontrada",
+    "back": "Volver al inicio"
+  }
 }
