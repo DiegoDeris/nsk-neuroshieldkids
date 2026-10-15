@@ -59,7 +59,13 @@ serve(async (req) => {
     }
 
     // Upsert device record (device_fingerprint validado como no vacío arriba)
-    await admin.from("devices").upsert({
+    // El error SÍ se comprueba. Antes no, y eso convertía un fallo en un
+    // éxito aparente: faltaba el índice único sobre device_fingerprint, el
+    // upsert se rechazaba, y la función respondía success igualmente. El
+    // móvil quedaba midiendo pero sin aparecer en el panel, así que el padre
+    // no podía verlo ni revocarlo. Un dispositivo que vigila a un menor sin
+    // figurar en ningún sitio no es aceptable en este producto.
+    const { error: errDispositivo } = await admin.from("devices").upsert({
       child_id: tokenRow.child_id,
       parent_id: tokenRow.parent_id,
       device_model: device_info?.model ?? null,
@@ -67,6 +73,14 @@ serve(async (req) => {
       device_fingerprint: fingerprint,
       last_seen_at: new Date().toISOString(),
     }, { onConflict: "device_fingerprint" });
+
+    if (errDispositivo) {
+      console.error("No se pudo registrar el dispositivo:", errDispositivo.message);
+      return json({
+        error: "No se pudo registrar el dispositivo. Vuelve a generar el código "
+          + "desde el panel e inténtalo de nuevo.",
+      }, 500);
+    }
 
     // Update child last_ingest_at → triggers real-time in dashboard modal
     await admin
