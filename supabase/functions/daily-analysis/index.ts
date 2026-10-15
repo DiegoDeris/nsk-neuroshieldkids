@@ -145,35 +145,51 @@ Deno.serve(async (req) => {
     // Hijos con eventos ayer
     const nextDay = new Date(yesterday); nextDay.setDate(nextDay.getDate() + 1);
     const nextDayStr = nextDay.toISOString().slice(0, 10);
-    const { data: childrenWithEvents } = await admin
+    // Los errores de estas consultas SÍ se comprueban. Si fallan en silencio,
+    // el cron termina diciendo "0 niños procesados, 0 fallos" y parece que
+    // simplemente no había nada que analizar. Un día entero sin veredicto
+    // para todos los niños, informado como si fuera normal.
+    const { data: childrenWithEvents, error: errEventos } = await admin
       .from("usage_events")
       .select("child_id")
       .gte("occurred_at", `${day}T00:00:00Z`)
       .lt("occurred_at", `${nextDayStr}T00:00:00Z`);
 
+    if (errEventos) {
+      console.error("No se pudieron leer los eventos del día:", errEventos.message);
+      return new Response(JSON.stringify({
+        ok: false, day, error: `lectura de eventos: ${errEventos.message}`,
+      }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const allChildIds = Array.from(new Set((childrenWithEvents ?? []).map((r: any) => r.child_id)));
+    console.log(`[${day}] eventos: ${childrenWithEvents?.length ?? 0} filas, ${allChildIds.length} niños`);
 
     // Solo procesar hijos de usuarios con plan premium activo
     const premiumParents = new Set<string>();
     if (allChildIds.length > 0) {
-      const { data: premiumSubs } = await admin
+      const { data: premiumSubs, error: errSubs } = await admin
         .from("subscriptions")
         .select("user_id")
         .eq("plan", "premium")
         .eq("status", "active");
+      if (errSubs) console.error("No se pudieron leer las suscripciones:", errSubs.message);
       (premiumSubs ?? []).forEach((s: any) => premiumParents.add(s.user_id));
+      console.log(`suscripciones premium activas: ${premiumSubs?.length ?? 0}`);
     }
 
     // Filtrar hijos: obtener parent_id y filtrar por plan
     const childIds: string[] = [];
     if (allChildIds.length > 0) {
-      const { data: childRows } = await admin
+      const { data: childRows, error: errHijos } = await admin
         .from("children")
         .select("id,parent_id")
         .in("id", allChildIds);
+      if (errHijos) console.error("No se pudieron leer los hijos:", errHijos.message);
       (childRows ?? []).forEach((c: any) => {
         if (premiumParents.has(c.parent_id)) childIds.push(c.id);
       });
+      console.log(`hijos con eventos: ${childRows?.length ?? 0}, de ellos premium: ${childIds.length}`);
     }
 
     const results: any[] = [];
