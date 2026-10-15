@@ -304,6 +304,29 @@ const ChildDetail = () => {
     engine_version: ai.engine_version,
   } : null);
 
+  // ── ¿Sigue valiendo el veredicto que tenemos guardado? ────────────────────
+  //
+  // Un veredicto es una foto de UN día. Enseñar "Todo va bien" con la
+  // puntuación de hace tres semanas, y encima en verde, es peor que no
+  // enseñar nada: el padre se queda tranquilo justo cuando no tenemos ni
+  // idea de cómo está su hijo.
+  //
+  // Deja de valer si el motor dice que no puede evaluar, o si es de ayer
+  // o de antes.
+  const VIGENCIA_MS = 36 * 60 * 60 * 1000;
+  const edadVeredicto = lastScore?.created_at
+    ? Date.now() - new Date(lastScore.created_at).getTime()
+    : Infinity;
+  const caducado = edadVeredicto > VIGENCIA_MS;
+  const veredictoVigente = Boolean(lastScore) && deep?.assessable !== false && !caducado;
+  const motivoSinVeredicto = !lastScore
+    ? "Todavía no se ha hecho ningún análisis."
+    : deep?.assessable === false
+      ? (fixMojibake(deep?.not_assessable_reason ?? "") || "Faltan datos medidos del dispositivo.")
+      : caducado
+        ? `El último análisis es del ${new Date(lastScore.created_at).toLocaleDateString()} y ya no refleja cómo está hoy. Hace falta que el dispositivo vuelva a enviar datos.`
+        : "";
+
   const downloadReport = async () => {
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -475,7 +498,12 @@ const ChildDetail = () => {
         </div>
 
         {/* Semáforo global de bienestar */}
-        <SemaphoreCard risk={lastScore?.risk_level} score={lastScore?.score} />
+        <SemaphoreCard
+          risk={lastScore?.risk_level}
+          score={lastScore?.score}
+          vigente={veredictoVigente}
+          motivo={motivoSinVeredicto}
+        />
 
         {/* Uso de hoy en tarjetas de solo lectura (dashboard, no formulario) */}
         <section>
@@ -919,12 +947,44 @@ function ReadOnlyMetric({ icon, label, value, hint }: { icon: React.ReactNode; l
   );
 }
 
-function SemaphoreCard({ risk, score }: { risk?: "low" | "medium" | "high"; score?: number }) {
+function SemaphoreCard({ risk, score, vigente, motivo }: {
+  risk?: "low" | "medium" | "high";
+  score?: number;
+  /** false cuando no hay veredicto válido para hoy. */
+  vigente: boolean;
+  /** Por qué no lo hay, en palabras para el padre. */
+  motivo?: string;
+}) {
   const states = [
     { key: "low", label: "TRANQUILO", desc: "Todo va bien hoy", dot: "bg-green-500", ring: "ring-green-200", text: "text-green-700", bg: "bg-green-50/70 dark:bg-green-950/20", border: "border-green-200" },
     { key: "medium", label: "ATENCIÓN", desc: "Vigila el patrón de uso", dot: "bg-amber-500", ring: "ring-amber-200", text: "text-amber-700", bg: "bg-amber-50/70 dark:bg-amber-950/20", border: "border-amber-200" },
     { key: "high", label: "ALERTA", desc: "Conviene actuar pronto", dot: "bg-red-500", ring: "ring-red-200", text: "text-red-700", bg: "bg-red-50/70 dark:bg-red-950/20", border: "border-red-200" },
   ] as const;
+  // Sin veredicto vigente no se pinta semáforo, ni color, ni número.
+  // Antes se mostraba el último guardado tal cual, así que un dato de hace
+  // semanas aparecía como "TRANQUILO · Todo va bien hoy".
+  if (!vigente) {
+    return (
+      <Card className="p-5 rounded-3xl shadow-soft border border-border bg-muted/30">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {states.map(s => (
+              <span key={s.key} className={`h-4 w-4 rounded-full ${s.dot} opacity-20`} />
+            ))}
+          </div>
+          <div>
+            <div className="text-xl font-extrabold tracking-tight text-muted-foreground">
+              SIN DATOS SUFICIENTES
+            </div>
+            <div className="text-sm text-muted-foreground max-w-xl">
+              {motivo || "No hay medición reciente del dispositivo."}
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   const active = states.find(s => s.key === risk);
   return (
     <Card className={`p-5 rounded-3xl shadow-soft border ${active ? `${active.bg} ${active.border}` : ""}`}>

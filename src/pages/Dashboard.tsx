@@ -163,15 +163,25 @@ const Dashboard = () => {
                   <Brain className="h-6 w-6 text-primary" />
                 </div>
                 <div>
+                  {/* Sin ningún dispositivo enviando datos, anunciar
+                      "monitorización activa" es sencillamente falso. */}
                   <div className="font-semibold flex items-center gap-2">
-                    IA · Monitorización activa en tiempo real
-                    {liveCount > 0 && (
-                      <Badge variant="outline" className="border-emerald-400 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 text-xs gap-1 py-0.5">
-                        <LiveDot active /> {liveCount} en vivo
-                      </Badge>
+                    {liveCount > 0 ? (
+                      <>
+                        Monitorización activa
+                        <Badge variant="outline" className="border-emerald-400 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 text-xs gap-1 py-0.5">
+                          <LiveDot active /> {liveCount} en vivo
+                        </Badge>
+                      </>
+                    ) : (
+                      "Monitorización en pausa"
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">Lectura de patrones de uso · Estado emocional · Alertas predictivas</p>
+                  <p className="text-sm text-muted-foreground">
+                    {liveCount > 0
+                      ? "Lectura de patrones de uso · Estado emocional · Alertas predictivas"
+                      : "Ningún dispositivo está enviando datos. Conecta el móvil del menor para que empiece el análisis."}
+                  </p>
                 </div>
               </div>
               {highRiskCount > 0 && (
