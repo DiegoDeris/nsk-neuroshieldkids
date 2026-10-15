@@ -25,8 +25,17 @@ export default function InstallToken() {
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
-    fetch(`${VALIDATE_FN}?token=${encodeURIComponent(token)}`, {
-      headers: { apikey: ANON_KEY },
+    // POST con el código en el cuerpo, nunca en la dirección: así no queda
+    // registrado en los historiales de acceso. La función rechaza GET, y
+    // llamarla por GET era lo que producía "Enlace no válido".
+    fetch(VALIDATE_FN, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${ANON_KEY}`,
+      },
+      body: JSON.stringify({ token }),
     })
       .then(r => r.json())
       .then((d: TokenInfo) => { setInfo(d); setLoading(false); })
