@@ -1,5 +1,11 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Importación alineada con el resto de funciones del proyecto.
+//
+// Esta era la única que cargaba la librería desde esm.sh, y con ella
+// auth.getUser() devolvía siempre "no autorizado" aunque la sesión fuera
+// válida: comprobado contra producción con el mismo usuario, predict-trends
+// respondía 200 y esta 401. Sin poder identificar al padre no se generaba
+// ningún código, y sin código no había QR ni emparejamiento posible.
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +16,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
@@ -24,7 +30,12 @@ serve(async (req) => {
       { global: { headers: { authorization: authHeader } } }
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !user) return json({ error: "Unauthorized" }, 401);
+    if (authErr || !user) {
+      // El detalle importa: "no autorizado" a secas dejó este fallo oculto
+      // semanas, porque parecía un problema de sesión del padre y no lo era.
+      console.error("getUser falló:", authErr?.message ?? "sin usuario");
+      return json({ error: "No se pudo verificar la sesión. Vuelve a entrar." }, 401);
+    }
 
     const { child_id } = await req.json();
     if (!child_id) return json({ error: "child_id required" }, 400);
