@@ -27,9 +27,16 @@ Deno.serve(async (req) => {
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { authorization: authHeader } } }
+      // Mayúscula inicial, como en el resto de funciones. En minúscula no
+      // sustituye a la cabecera que pone la librería: se enviaban dos
+      // Authorization y la pasarela respondía con una página HTML de error,
+      // que getUser no podía interpretar. Resultado: 401 siempre.
+      { global: { headers: { Authorization: authHeader } } },
     );
-    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+    // El token se pasa explícitamente para no depender de cómo la librería
+    // combine las cabeceras, que es justo lo que rompió esto.
+    const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const { data: { user }, error: authErr } = await userClient.auth.getUser(jwt);
     if (authErr || !user) {
       // El detalle importa: "no autorizado" a secas dejó este fallo oculto
       // semanas, porque parecía un problema de sesión del padre y no lo era.
