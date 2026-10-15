@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Check, Send, Wifi, RefreshCw, QrCode, Zap, Settings2, Upload, Download, Smartphone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ConnectWizard } from "./ConnectWizard";
 
 interface Props {
   child: { id: string; name: string; ingest_token: string | null; last_ingest_at: string | null };
@@ -22,10 +21,8 @@ const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 export const QuickConnect = ({ child, onChange }: Props) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState("");
-  const [guided, setGuided] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [sendingTest, setSendingTest] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const initialSync = useRef<string | null>(child.last_ingest_at);
   const [token, setToken] = useState(child.ingest_token ?? "");
@@ -62,26 +59,6 @@ export const QuickConnect = ({ child, onChange }: Props) => {
     setCopied(key);
     setTimeout(() => setCopied(""), 1500);
     toast.success(t("common.copied"));
-  };
-
-  const sendTest = async () => {
-    setSendingTest(true);
-    try {
-      const res = await fetch(INGEST_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${ANON_KEY}`,
-          "apikey": ANON_KEY,
-        },
-        body: JSON.stringify({ token, events: [{ app_name: "TestApp", duration_seconds: 60, event_type: "app_usage" }] }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "error");
-      toast.success(t("quick.testOk"));
-      onChange();
-    } catch (e: any) { toast.error(`❌ ${e.message}`); }
-    finally { setSendingTest(false); }
   };
 
 
@@ -129,15 +106,6 @@ export const QuickConnect = ({ child, onChange }: Props) => {
     void generarEnlaceInstalacion();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [child.id]);
-
-  if (guided) {
-    return (
-      <div className="space-y-2">
-        <Button size="sm" variant="ghost" onClick={() => setGuided(false)}>← {t("quick.backToQuick")}</Button>
-        <ConnectWizard child={child} onChange={onChange} />
-      </div>
-    );
-  }
 
   if (generating) {
     return (
@@ -205,14 +173,6 @@ export const QuickConnect = ({ child, onChange }: Props) => {
           <Step n={3} title={t("quick.step3Title")} body={t("quick.step3Body")} />
 
           <div className="flex gap-2 flex-wrap pt-2">
-            <Button onClick={sendTest} variant="outline" size="sm" disabled={sendingTest}>
-              {sendingTest ? (
-                <span className="inline-block h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin mr-2" />
-              ) : (
-                <Send className="h-3 w-3 mr-1" />
-              )}
-              {t("quick.sendTest")}
-            </Button>
             {!waiting ? (
               <Button onClick={() => { initialSync.current = child.last_ingest_at; setWaiting(true); }} size="sm">
                 <Wifi className="h-3 w-3 mr-1" /> {t("quick.listen")}

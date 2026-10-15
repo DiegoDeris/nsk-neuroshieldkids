@@ -562,8 +562,8 @@ const ChildDetail = () => {
               Preferimos decirte que no lo sabemos antes que darte una puntuación sin respaldo.
               Instala la app en el móvil de tu hijo y el análisis empezará a funcionar.
             </p>
-            <Button asChild variant="outline" className="mt-4">
-              <Link to="/connect">Conectar el dispositivo</Link>
+            <Button variant="outline" className="mt-4" onClick={() => setShowQR(true)}>
+              Conectar el dispositivo
             </Button>
           </Card>
         )}

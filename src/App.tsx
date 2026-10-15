@@ -19,10 +19,7 @@ import Devices from "./pages/Devices";
 import Quests from "./pages/Quests";
 import Learn from "./pages/Learn";
 import Pricing from "./pages/Pricing";
-import Connect from "./pages/Connect";
-import Install from "./pages/Install";
 import InstallToken from "./pages/InstallToken";
-import Monitor from "./pages/Monitor";
 import Account from "./pages/Account";
 import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
@@ -74,10 +71,11 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/connect" element={<Connect />} />
-            <Route path="/install" element={<Install />} />
+            {/* Vinculación del móvil del menor con la app nativa.
+                /s/ es el formato corto que declara el manifiesto de Android;
+                ambos llevan a la misma pantalla. */}
             <Route path="/install/:token" element={<InstallToken />} />
-            <Route path="/monitor" element={<Monitor />} />
+            <Route path="/s/:token" element={<InstallToken />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/children" element={<ProtectedRoute><Children /></ProtectedRoute>} />
             <Route path="/child/:id" element={<ProtectedRoute><ChildDetail /></ProtectedRoute>} />

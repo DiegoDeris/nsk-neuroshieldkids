@@ -92,24 +92,6 @@ const Devices = () => {
     return () => { supabase.removeChannel(ch); };
   }, [user, selected]);
 
-  const sendTest = async (child: any) => {
-    if (!child.ingest_token) return toast.error("Token no disponible");
-    try {
-      const res = await fetch(INGEST_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: child.ingest_token,
-          events: [{ app_name: "TestApp", duration_seconds: 60, event_type: "app_usage" }],
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "error");
-      toast.success(t("devices.testOk"));
-      load();
-    } catch (e: any) { toast.error(`❌ ${e.message}`); }
-  };
-
   const runPrediction = async () => {
     if (!selected) return;
     setPredicting(true);
@@ -182,9 +164,7 @@ const Devices = () => {
                       </Badge>
                     </div>
                     <div className="mt-3 flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1" onClick={(e) => { e.stopPropagation(); sendTest(c); }}>
-                        <Send className="h-3 w-3 mr-1" /> {t("devices.test")}
-                      </Button>
+                      
                       <Link to={`/child/${c.id}`} onClick={(e) => e.stopPropagation()}>
                         <Button size="sm" variant="ghost"><Brain className="h-3 w-3" /></Button>
                       </Link>

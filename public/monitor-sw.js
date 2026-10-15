@@ -1,113 +1,48 @@
-// NeuroShield Kids — Monitor Service Worker
-//
-// IMPORTANTE — lo que este archivo NO hace, y por qué:
-//
-// La versión anterior fabricaba un evento falso cada vez que el sistema lo
-// despertaba: app_name "Safari iOS", 120 segundos de uso, interacciones a
-// cero. Nada de eso se medía; se inventaba. Ese dato entraba en la base y el
-// motor clínico lo trataba como tiempo de pantalla real de un menor.
-//
-// Eso está eliminado. Un service worker no puede observar qué apps usa el
-// niño, ni sus desbloqueos, ni su sueño: solo ve su propia página. Inventar
-// esos datos en un producto de salud mental infantil es peor que no tener
-// producto, porque un padre puede quedarse tranquilo con una cifra falsa.
-//
-// Este service worker se limita ahora a reenviar mediciones reales que se
-// quedaron sin enviar por falta de cobertura. Si no hay nada real pendiente,
-// no envía nada.
-
-const INGEST_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co/functions/v1/ingest-usage";
-const DB_NAME = "nsk-monitor";
-const DB_VERSION = 1;
-const STORE = "config";
-const SYNC_TAG = "nsk-bg-sync";
-
-// ── IndexedDB ─────────────────────────────────────────────────────────────────
-
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      e.target.result.createObjectStore(STORE);
-    };
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-function idbGet(key) {
-  return openDB().then((db) => new Promise((resolve, reject) => {
-    const req = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  }));
-}
-
-function idbSet(key, value) {
-  return openDB().then((db) => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(value, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  }));
-}
-
-function idbDelete(key) {
-  return openDB().then((db) => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).delete(key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  }));
-}
-
-// ── Reenvío de mediciones REALES pendientes ──────────────────────────────────
-
 /**
- * Envía únicamente eventos que la página midió de verdad y no pudo entregar.
- * Si la cola está vacía, no se envía nada: no se inventa actividad.
+ * Retirada del monitor web.
+ * ─────────────────────────────────────────────────────────────────────────
+ * El monitor web ha sido sustituido por la app nativa de Android. Esta
+ * página solo sabía cuánto tiempo estuvo ella misma abierta, que no es el
+ * uso real del móvil, y el motor clínico ya rechaza esos datos.
+ *
+ * Este archivo NO se puede borrar sin más: un service worker sigue vivo en
+ * todos los móviles donde se llegó a registrar aunque el archivo desaparezca
+ * del servidor. Si lo borrásemos, seguiría ejecutándose la versión antigua
+ * durante meses, sirviendo páginas cacheadas y posiblemente enviando datos.
+ *
+ * Así que lo que queda aquí es su desinstalación: se activa de inmediato,
+ * borra sus cachés, se da de baja y recarga las pestañas abiertas para que
+ * dejen de depender de él.
  */
-async function flushPending() {
-  const token = await idbGet("token");
-  if (!token || token.length < 16) return;
-
-  const pending = (await idbGet("pending")) || [];
-  if (!Array.isArray(pending) || pending.length === 0) return;
-
-  const res = await fetch(INGEST_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({ token, events: pending }),
-  });
-
-  if (res.ok) {
-    await idbSet("pending", []);
-    return;
-  }
-
-  // Token rechazado: se borra para dejar de reintentar en bucle y para que la
-  // página pida uno nuevo. Antes se reintentaba indefinidamente con un token
-  // caducado, generando errores sin fin y sin explicación para el padre.
-  if (res.status === 401 || res.status === 403) {
-    await idbDelete("token");
-    await idbSet("token_rejected_at", Date.now());
-  }
-}
-
-self.addEventListener("periodicsync", (event) => {
-  if (event.tag === SYNC_TAG) event.waitUntil(flushPending());
-});
-
-self.addEventListener("sync", (event) => {
-  if (event.tag === SYNC_TAG) event.waitUntil(flushPending());
-});
-
-self.addEventListener("fetch", () => {});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
-});
 
 self.addEventListener("install", () => {
+  // No esperar a que se cierren las pestañas: esto tiene que ocurrir ya.
   self.skipWaiting();
 });
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        const nombres = await caches.keys();
+        await Promise.all(nombres.map((n) => caches.delete(n)));
+      } catch (_) {
+        // Si el borrado de cachés falla, la baja sigue siendo lo importante.
+      }
+
+      await self.registration.unregister();
+
+      const clientes = await self.clients.matchAll({ type: "window" });
+      for (const cliente of clientes) {
+        try {
+          cliente.navigate(cliente.url);
+        } catch (_) {
+          // Una pestaña que no se deje recargar se arreglará sola al abrirse
+          // de nuevo: el service worker ya está dado de baja.
+        }
+      }
+    })(),
+  );
+});
+
+// Sin fetch ni sync: no intercepta nada y no envía nada.

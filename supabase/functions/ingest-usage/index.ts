@@ -264,15 +264,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
         ? ev.metadata as Record<string, unknown>
         : {};
 
-      // El tipo de evento se respeta en lugar de forzarlo a "app_usage".
-      // Antes todo se guardaba como uso de apps, incluido el tiempo que el
-      // monitor web tenía su propia página abierta — que no es uso del móvil
-      // del niño. Eso inflaba el tiempo de pantalla con algo que no lo era.
+      // El monitor web está retirado: lo sustituye la app nativa. Su service
+      // worker, sin embargo, sigue registrado en cualquier móvil donde se
+      // llegó a abrir, y podría seguir enviando durante semanas.
+      //
+      // Esos envíos se descartan aquí en lugar de guardarlos. El motor ya los
+      // ignoraba, pero almacenarlos ensuciaba el historial del niño y hacía
+      // creer que el dispositivo estaba midiendo cuando no lo estaba.
       const declared = ev.event_type ? String(ev.event_type) : "app_usage";
-      const isMonitorSession = declared === "monitor_session"
+      const esMonitorWeb = declared === "monitor_session"
         || meta.measures_device_usage === false
         || meta.source === "web_monitor";
-      const eventType = isMonitorSession ? "monitor_session" : "app_usage";
+      if (esMonitorWeb) return null;
 
       return {
         child_id: child.id,
@@ -280,11 +283,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
         occurred_at: occurred,
         app_name: app,
         duration_seconds: dur,
-        event_type: eventType,
+        event_type: "app_usage",
         source: "api",
         metadata: meta,
       };
-    });
+    }).filter((r): r is NonNullable<typeof r> => r !== null);
+
+    if (rows.length === 0) {
+      // Todo lo recibido era del monitor web retirado. Se responde bien para
+      // que el emisor no reintente en bucle, pero no se guarda nada.
+      return json({ ok: true, inserted: 0, descartados: "monitor_web_retirado" });
+    }
 
     // Insertar eventos brutos
     const ins = await sbInsert("usage_events", rows);
