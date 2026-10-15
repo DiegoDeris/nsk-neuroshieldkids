@@ -4,6 +4,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  // Sin esto el navegador rechaza la comprobación previa y el panel no puede
+  // pedir el código de instalación: el padre ve "no se pudo generar" y el
+  // emparejamiento se queda sin hacer.
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 serve(async (req) => {
@@ -65,6 +69,8 @@ serve(async (req) => {
     });
     if (insertErr) throw insertErr;
 
+    // El panel construye la URL con su propio origen; esta se devuelve solo
+    // por comodidad para quien llame a la función directamente.
     const url = `https://nsk-neuroshieldkids.vercel.app/install/${token}`;
 
     return json({ token, url, expires_at });
