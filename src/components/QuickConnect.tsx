@@ -26,11 +26,12 @@ export const QuickConnect = ({ child, onChange }: Props) => {
   const [waiting, setWaiting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
-  const [rotating, setRotating] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const initialSync = useRef<string | null>(child.last_ingest_at);
   const [token, setToken] = useState(child.ingest_token ?? "");
   const [generating, setGenerating] = useState(!child.ingest_token);
+  const [installUrl, setInstallUrl] = useState("");
+  const [generandoEnlace, setGenerandoEnlace] = useState(true);
 
   // Auto-generate token if missing (child created before migration or token was null)
   useEffect(() => {
@@ -83,19 +84,6 @@ export const QuickConnect = ({ child, onChange }: Props) => {
     finally { setSendingTest(false); }
   };
 
-  const rotate = async () => {
-    if (!confirm(t("quick.rotateConfirm"))) return;
-    setRotating(true);
-    try {
-      const newToken = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-        .map(b => b.toString(16).padStart(2, "0")).join("");
-      const { error } = await supabase.from("children").update({ ingest_token: newToken }).eq("id", child.id);
-      if (error) return toast.error(error.message);
-      setToken(newToken);
-      toast.success(t("quick.rotated"));
-      onChange();
-    } finally { setRotating(false); }
-  };
 
   const onFile = async (file: File) => {
     if (file.size > 2_000_000) return toast.error("Max 2MB");
@@ -111,8 +99,36 @@ export const QuickConnect = ({ child, onChange }: Props) => {
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
-  // URL que abre el Monitor directamente al escanear
-  const monitorUrl = `${window.location.origin}/monitor?t=${encodeURIComponent(token)}`;
+  // ── Enlace de instalación ────────────────────────────────────────────────
+  //
+  // El QR tiene que llevar a la app nativa, no al monitor web. El monitor solo
+  // sabe cuánto tiempo estuvo abierta su propia página, y el motor clínico ya
+  // rechaza esos datos: un QR que apunte ahí deja el emparejamiento sin hacer.
+  //
+  // El código es de un solo uso y caduca a las 48 h. La app lo canjea en
+  // register-device y recibe a cambio el token de envío.
+  const generarEnlaceInstalacion = async () => {
+    setGenerandoEnlace(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-install-token", {
+        body: { child_id: child.id },
+      });
+      if (error) throw error;
+      if (!data?.token) throw new Error("respuesta sin código");
+      setInstallUrl(`${window.location.origin}/install/${data.token}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "error desconocido";
+      toast.error(`No se pudo generar el código de instalación: ${msg}`);
+      setInstallUrl("");
+    } finally {
+      setGenerandoEnlace(false);
+    }
+  };
+
+  useEffect(() => {
+    void generarEnlaceInstalacion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [child.id]);
 
   if (guided) {
     return (
@@ -151,16 +167,34 @@ export const QuickConnect = ({ child, onChange }: Props) => {
       </div>
 
       <div className="grid md:grid-cols-[auto_1fr] gap-6 items-start">
-        {/* QR único */}
+        {/* QR de instalación de la app nativa */}
         <div className="flex flex-col items-center gap-2">
-          <div className="bg-white p-4 rounded-2xl shadow-soft mx-auto">
-            <QRCodeSVG value={monitorUrl} size={180} />
+          <div className="bg-white p-4 rounded-2xl shadow-soft mx-auto flex items-center justify-center min-h-[212px] min-w-[212px]">
+            {generandoEnlace ? (
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            ) : installUrl ? (
+              <QRCodeSVG value={installUrl} size={180} level="M" />
+            ) : (
+              <div className="text-center text-xs text-muted-foreground px-4">
+                No se pudo generar el código.
+              </div>
+            )}
           </div>
           <div className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1">
-            <QrCode className="h-3 w-3" /> Escanear con la cámara del menor
+            <QrCode className="h-3 w-3" /> Escanear con la cámara del móvil del menor
           </div>
-          <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={rotate} disabled={rotating} title={t("quick.rotate")}>
-            <RefreshCw className={`h-3 w-3 mr-1 ${rotating ? "animate-spin" : ""}`} /> Regenerar QR
+          <p className="text-center text-[11px] text-muted-foreground max-w-[200px]">
+            Lleva a instalar la app y la vincula sola. Caduca en 48 horas.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs px-3"
+            onClick={generarEnlaceInstalacion}
+            disabled={generandoEnlace}
+            title="Genera un código nuevo e invalida el anterior"
+          >
+            <RefreshCw className={`h-3 w-3 mr-1 ${generandoEnlace ? "animate-spin" : ""}`} /> Regenerar QR
           </Button>
         </div>
 

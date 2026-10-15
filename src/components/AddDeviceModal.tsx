@@ -24,22 +24,23 @@ export function AddDeviceModal({ childId, childName, childAvatar, ingestToken: i
   const [errMsg, setErrMsg] = useState("");
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Ensure token exists — auto-generate if missing
+  // Pide un código de instalación de un solo uso. El QR tiene que llevar a
+  // instalar la app nativa, no al monitor web: el monitor solo sabe cuánto
+  // tiempo estuvo abierta su propia página y el motor clínico ya rechaza esos
+  // datos, así que un QR hacia allí deja el emparejamiento sin hacer.
   const ensureToken = async () => {
     setPhase("loading");
     setErrMsg("");
     try {
-      let tok = token;
-      if (!tok || tok.length < 16) {
-        tok = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-          .map(b => b.toString(16).padStart(2, "0")).join("");
-        const { error } = await supabase.from("children").update({ ingest_token: tok }).eq("id", childId);
-        if (error) throw error;
-        setToken(tok);
-      }
+      const { data, error } = await supabase.functions.invoke("generate-install-token", {
+        body: { child_id: childId },
+      });
+      if (error) throw error;
+      if (!data?.token) throw new Error("La respuesta no traía código");
+      setToken(data.token);
       setPhase("ready");
-    } catch (e: any) {
-      setErrMsg(e.message ?? "Error generando QR");
+    } catch (e: unknown) {
+      setErrMsg(e instanceof Error ? e.message : "Error generando el código");
       setPhase("error");
     }
   };
@@ -74,9 +75,7 @@ export function AddDeviceModal({ childId, childName, childAvatar, ingestToken: i
     };
   }, [open, phase, childId]);
 
-  const monitorUrl = token
-    ? `${window.location.origin}/monitor?t=${encodeURIComponent(token)}`
-    : "";
+  const installUrl = token ? `${window.location.origin}/install/${token}` : "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -114,12 +113,12 @@ export function AddDeviceModal({ childId, childName, childAvatar, ingestToken: i
                   Escanea con el móvil de <strong>{childName}</strong>
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  iOS o Android — se abre directo en el navegador
+                  Android — lleva a instalar la app y se vincula sola
                 </p>
               </div>
 
               <div className="bg-white p-4 rounded-2xl shadow-inner border border-slate-100">
-                <QRCodeSVG value={monitorUrl} size={210} level="M" />
+                <QRCodeSVG value={installUrl} size={210} level="M" />
               </div>
 
               <div className="flex items-center gap-2 text-xs text-slate-400 w-full">
@@ -128,7 +127,7 @@ export function AddDeviceModal({ childId, childName, childAvatar, ingestToken: i
               </div>
 
               <button
-                onClick={() => { setToken(""); ensureToken(); toast.info("Nuevo QR generado"); }}
+                onClick={() => { void ensureToken(); toast.info("Nuevo QR generado. El anterior deja de valer."); }}
                 className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <RefreshCw className="h-3 w-3" />

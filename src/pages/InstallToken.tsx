@@ -33,6 +33,19 @@ export default function InstallToken() {
       .catch(() => { setInfo({ valid: false }); setLoading(false); });
   }, [token]);
 
+  // Si la app ya está instalada, abrirla y vincular sin más pasos.
+  //
+  // Se intenta una sola vez y solo en Android. Si la app no está, el sistema
+  // ignora el enlace en silencio y el padre se queda en esta página con el
+  // botón de descarga, que es el comportamiento correcto: nunca se muestra un
+  // error por algo que es normal la primera vez.
+  useEffect(() => {
+    if (!token || !info?.valid) return;
+    if (!/Android/i.test(navigator.userAgent)) return;
+    const t = setTimeout(() => { window.location.href = `nsk://setup/${token}`; }, 400);
+    return () => clearTimeout(t);
+  }, [token, info?.valid]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
@@ -110,11 +123,15 @@ export default function InstallToken() {
             ))}
           </div>
 
+          <a href={setupUri} className="text-sm text-blue-500 font-medium">
+            Ya tengo la app — abrir y vincular →
+          </a>
+
           <button
             onClick={() => setStep("scan")}
-            className="text-sm text-blue-500 font-medium"
+            className="text-xs text-slate-400 mt-3"
           >
-            Ya tengo la app instalada →
+            No se abre: enséñame el QR
           </button>
         </>
       )}
