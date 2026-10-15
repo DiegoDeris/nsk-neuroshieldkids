@@ -23,7 +23,18 @@ Mientras no existan, el QR sigue funcionando por el esquema propio `nsk://setup`
 en móviles que ya tengan la app instalada; lo que no funciona es el enlace
 diferido desde la tienda.
 
-Comprobación tras desplegar — las dos URL deben devolver JSON, no la página web:
+## Por qué hay una regla en vercel.json
+
+`apple-app-site-association` no tiene extensión, así que el servidor no sabe
+que es JSON. Apple exige que se sirva como `application/json` o los enlaces
+universales de iOS no se verifican. Por eso hay una entrada para ese fichero
+en `headers` dentro de `vercel.json`.
+
+Ojo al tocar ese archivo: **Vercel rechaza cualquier clave que no reconozca**
+y el despliegue falla. Nada de añadir un campo `comment` para explicar una
+regla; las explicaciones van aquí.
+
+## Comprobación tras desplegar — las dos URL deben devolver JSON, no la página web:
 
 - https://nsk-neuroshieldkids.vercel.app/.well-known/assetlinks.json
 - https://nsk-neuroshieldkids.vercel.app/.well-known/apple-app-site-association
