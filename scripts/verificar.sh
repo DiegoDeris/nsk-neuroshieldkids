@@ -90,6 +90,35 @@ sys.exit(1 if rotos else 0)
 PY
 [ $? -ne 0 ] && FALLOS=$((FALLOS+1))
 
+paso "El despliegue no revierte arreglos de base de datos"
+# production_hardening contiene una version antigua de
+# aggregate_events_to_metric. Si se aplica DESPUES de un arreglo posterior,
+# lo deshace en silencio: la funcion vuelve a la version del monitor web y
+# el analisis diario deja de ver las senales nativas.
+ORDEN=$(grep -oE 'supabase/migrations/[0-9a-z_]+\.sql' ../deploy-r6.command 2>/dev/null)
+if [ -z "$ORDEN" ]; then
+  bien "no se encontro deploy-r6.command (se omite)"
+else
+  ORDENADAS=$(echo "$ORDEN" | sed 's|.*/||' | sort -c 2>&1 || echo "DESORDEN")
+  if [ "$ORDENADAS" = "DESORDEN" ]; then
+    echo "$ORDEN" | sed 's/^/   /'
+    mal "las migraciones del despliegue no van en orden cronologico"
+  else bien "migraciones en orden: la mas reciente se aplica la ultima"; fi
+  # Toda migracion listada tiene que poder reaplicarse sin fallar.
+  NOIDEM=""
+  for m in $ORDEN; do
+    f="$m"
+    [ -f "$f" ] || continue
+    if grep -qiE 'add constraint' "$f" && ! grep -qiE 'drop constraint if exists' "$f"; then
+      NOIDEM="$NOIDEM $f"
+    fi
+  done
+  if [ -n "$(echo "$NOIDEM" | tr -d '[:space:]')" ]; then
+    echo "  $NOIDEM" | tr ' ' '\n' | sed 's/^/   /'
+    mal "migraciones que fallarian al reaplicarse"
+  else bien "todas las migraciones del despliegue son reaplicables"; fi
+fi
+
 paso "Errores que se descartan (la causa de casi todos los fallos)"
 # Un error ignorado convierte un fallo en un exito aparente. Asi se perdio el
 # analisis diario entero, el registro del dispositivo y el codigo de

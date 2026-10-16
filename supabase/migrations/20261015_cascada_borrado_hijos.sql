@@ -10,11 +10,18 @@ delete from predictions p where not exists (select 1 from children c where c.id 
 delete from quests q      where not exists (select 1 from children c where c.id = q.child_id);
 delete from rules r       where not exists (select 1 from children c where c.id = r.child_id);
 
+-- Reaplicable: se quitan antes de ponerlas, para que un nuevo despliegue no
+-- falle por 'ya existe' y tumbe las migraciones que vengan detras.
+
+alter table public.usage_events drop constraint if exists usage_events_child_id_fkey;
 alter table public.usage_events add constraint usage_events_child_id_fkey
   foreign key (child_id) references public.children(id) on delete cascade;
+alter table public.predictions drop constraint if exists predictions_child_id_fkey;
 alter table public.predictions  add constraint predictions_child_id_fkey
   foreign key (child_id) references public.children(id) on delete cascade;
+alter table public.quests drop constraint if exists quests_child_id_fkey;
 alter table public.quests       add constraint quests_child_id_fkey
   foreign key (child_id) references public.children(id) on delete cascade;
+alter table public.rules drop constraint if exists rules_child_id_fkey;
 alter table public.rules        add constraint rules_child_id_fkey
   foreign key (child_id) references public.children(id) on delete cascade;
