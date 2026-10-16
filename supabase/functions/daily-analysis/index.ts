@@ -198,7 +198,12 @@ Deno.serve(async (req) => {
     for (const cid of childIds) {
       try {
         // Reagregar
-        await admin.rpc("aggregate_events_to_metric", { _child_id: cid, _day: day });
+        // Este error se descartaba, y la función fallaba siempre por una
+        // columna inexistente: el día no se agregaba, no había métrica y el
+        // niño se saltaba en silencio. Ningún análisis diario llegó a
+        // ejecutarse nunca por esto. Ahora revienta y se cuenta como fallo.
+        const { error: errAgg } = await admin.rpc("aggregate_events_to_metric", { _child_id: cid, _day: day });
+        if (errAgg) throw new Error(`agregación del día: ${errAgg.message}`);
 
         const { data: child } = await admin.from("children").select("*").eq("id", cid).maybeSingle();
         const { data: metric } = await admin.from("usage_metrics")
@@ -266,7 +271,9 @@ Deno.serve(async (req) => {
         // se guarda igualmente con una redacción de reserva.
         const narrative = await writeNarrative(GEMINI_API_KEY, child, engine);
 
-        await admin.from("emotional_scores").insert([{
+        // El veredicto es el producto. Si no se guarda, el padre no lo ve
+        // y el dia pasa como si nada: tiene que contar como fallo.
+        const { error: errVeredicto } = await admin.from("emotional_scores").insert([{
           child_id: cid, parent_id: child.parent_id,
           score: engine.emotional_score,
           risk_level: engine.risk_level,
@@ -288,12 +295,16 @@ Deno.serve(async (req) => {
           actions: narrative.actions,
           source_metric_id: metric.id,
         }]);
+        if (errVeredicto) throw new Error(`guardar el analisis: ${errVeredicto.message}`);
 
         if (narrative.actions.length > 0) {
-          await admin.from("recommendations").insert(narrative.actions.map((a: string) => ({
+          const { error: errRecs } = await admin.from("recommendations").insert(narrative.actions.map((a: string) => ({
             child_id: cid, parent_id: child.parent_id,
             title: a, body: narrative.explanation, category: engine.risk_level,
           })));
+          // Las recomendaciones no son criticas: si fallan, el veredicto sigue
+          // siendo valido. Se deja constancia pero no se tumba el analisis.
+          if (errRecs) console.error(`recomendaciones de ${cid}:`, errRecs.message);
         }
 
         // Alertas: score > 60, riesgo alto, o derivación recomendada.
@@ -315,12 +326,15 @@ Deno.serve(async (req) => {
           // La alerta cita la evidencia concreta, no un número abstracto.
           const topEvidence = engine.evidence[0];
           const detail = topEvidence ? `${topEvidence.claim} (${topEvidence.data_point}).` : "";
-          await admin.from("alerts").insert([{
+          // La alerta es el aviso al padre de que algo va mal. Si no se
+          // guarda, el padre no se entera: cuenta como fallo del dia.
+          const { error: errAlerta } = await admin.from("alerts").insert([{
             child_id: cid, parent_id: child.parent_id,
             severity: sevMap[engine.risk_level] ?? "preventive",
             title: `${child.name}: ${topEvidence?.claim ?? `puntuación ${engine.emotional_score}`}`,
             message: `${detail} ${narrative.explanation}`.trim(),
           }]);
+          if (errAlerta) throw new Error(`guardar la alerta: ${errAlerta.message}`);
         }
 
         results.push({
@@ -335,11 +349,14 @@ Deno.serve(async (req) => {
         failureCount++;
         try {
           const { data: childRow } = await admin.from("children").select("parent_id").eq("id", cid).maybeSingle();
-          await admin.from("cron_failures").insert([{
+          // Ultimo recurso: si ni esto se puede guardar, al menos queda en
+          // el registro de la funcion. Nunca en silencio.
+          const { error: errRegistro } = await admin.from("cron_failures").insert([{
             job_name: "daily-analysis",
             error: childErr instanceof Error ? childErr.message : String(childErr),
             context: { child_id: cid, parent_id: childRow?.parent_id ?? null, day },
           }]);
+          if (errRegistro) console.error("No se pudo registrar el fallo:", errRegistro.message);
         } catch (logErr) {
           console.error("No se pudo registrar cron_failures:", logErr);
         }

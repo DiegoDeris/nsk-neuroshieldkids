@@ -139,10 +139,16 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
     const days = Array.from(new Set(events.map(e => e.occurred_at.slice(0, 10))));
+    // Sin comprobar el error, un CSV podia responder "importado" sin que se
+    // hubiera agregado ningun dia: el mismo fallo que tumbo el analisis
+    // diario durante meses sin que nadie lo viera.
     for (const d of days) {
-      await admin.rpc("aggregate_events_to_metric", { _child_id: child.id, _day: d });
+      const { error: errAgg } = await admin.rpc("aggregate_events_to_metric", { _child_id: child.id, _day: d });
+      if (errAgg) throw new Error(`agregacion del dia ${d}: ${errAgg.message}`);
     }
-    await admin.from("children").update({ last_ingest_at: new Date().toISOString() }).eq("id", child.id);
+    const { error: errSello } = await admin.from("children")
+      .update({ last_ingest_at: new Date().toISOString() }).eq("id", child.id);
+    if (errSello) throw new Error(`marcar ultimo envio: ${errSello.message}`);
 
     return new Response(JSON.stringify({ ok: true, ingested: events.length, days, skipped: errors, skipped_count: errors.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

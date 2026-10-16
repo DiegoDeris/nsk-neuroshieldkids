@@ -58,7 +58,10 @@ const Learn = () => {
     next.has(key) ? next.delete(key) : next.add(key);
     setDone(next);
     if (user) {
-      await supabase.from("profiles").update({ lessons_done: [...next] }).eq("id", user.id);
+      const { error } = await supabase.from("profiles")
+        .update({ lessons_done: [...next] }).eq("id", user.id);
+      // No critico, pero si falla la lección marcada se pierde al recargar.
+      if (error) console.error("No se pudo guardar el progreso:", error.message);
     }
   };
 

@@ -74,7 +74,10 @@ const ChildDetail = () => {
     if (loadingRef.current) return;
     loadingRef.current = true;
     try {
-    const [{ data: c }, { data: m }, { data: s }, { data: r }, { data: g }] = await Promise.all([
+    // Promise.all: si una sola consulta falla, antes no se asignaba nada y la
+    // pantalla se quedaba en "Cargando…" para siempre, sin decir jamás qué
+    // pasaba. Ahora cada resultado se recoge por separado y el fallo se ve.
+    const [{ data: c, error: errHijo }, { data: m }, { data: s }, { data: r }, { data: g }] = await Promise.all([
       supabase.from("children").select("*").eq("id", id).maybeSingle(),
       supabase.from("usage_metrics").select("*").eq("child_id", id).order("metric_date", { ascending: false })
         .limit(Math.max(DIAS_MOTOR + 1, limits.historyDays === Infinity ? 365 : limits.historyDays)),
@@ -82,7 +85,13 @@ const ChildDetail = () => {
       supabase.from("recommendations").select("*").eq("child_id", id).order("created_at", { ascending: false }).limit(10),
       supabase.from("gamification").select("*").eq("child_id", id).maybeSingle(),
     ]);
+    if (errHijo) setFalloCarga(`No se pudo cargar la ficha: ${errHijo.message}`);
+    else if (!c) setFalloCarga("no-encontrado");
+    else setFalloCarga(null);
+
     setChild(c); setMetrics(m ?? []); setScores(s ?? []); setRecs(r ?? []); setGame(g);
+    } catch (e: unknown) {
+      setFalloCarga(e instanceof Error ? e.message : "Error inesperado al cargar la ficha.");
     } finally {
       loadingRef.current = false;
     }
@@ -156,6 +165,8 @@ const ChildDetail = () => {
   const isConnected = !!child?.last_ingest_at;
 
   const [aiDeep, setAiDeep] = useState<any>(null);
+  /** null = sin problema · "no-encontrado" · cualquier otro texto = error a mostrar. */
+  const [falloCarga, setFalloCarga] = useState<string | null>(null);
 
   const analyze = async () => {
     if (!limits.aiAnalysis) return; // plan free/basic: no IA
@@ -187,7 +198,9 @@ const ChildDetail = () => {
       setAiDeep(a);
 
       // Persistimos el análisis enriquecido dentro de patterns (jsonb) para no migrar esquema
-      await supabase.from("emotional_scores").insert([{
+      // Si el analisis no se guarda, el padre lo ve en pantalla y
+      // desaparece al recargar, ademas de descuadrar con el de la noche.
+      const { error: errGuardar } = await supabase.from("emotional_scores").insert([{
         child_id: id!, parent_id: user!.id,
         score: a.emotional_score, risk_level: a.risk_level,
         patterns: {
@@ -212,21 +225,27 @@ const ChildDetail = () => {
         actions: a.actions,
         source_metric_id: last.id,
       }]);
+      if (errGuardar) throw new Error(`No se pudo guardar el análisis: ${errGuardar.message}`);
 
       if (Array.isArray(a.actions)) {
-        await supabase.from("recommendations").insert(
+        // No critico: el veredicto ya esta guardado. Se deja constancia.
+        const { error: errRec } = await supabase.from("recommendations").insert(
           a.actions.map((x: string) => ({ child_id: id!, parent_id: user!.id, title: x, body: a.explanation, category: a.risk_level }))
         );
+        if (errRec) console.error("No se pudieron guardar las recomendaciones:", errRec.message);
       }
 
       const sevMap: any = { critical: "critical", moderate: "moderate", watch: "moderate", preventive: "preventive" };
       if (a.refer_to_professional || a.severity_tier === "critical" || a.emotional_score > 60) {
-        await supabase.from("alerts").insert([{
+        // La alerta es el aviso de que algo va mal. Si no se guarda, el
+        // padre no se entera: se le dice en el momento.
+        const { error: errAl } = await supabase.from("alerts").insert([{
           child_id: id!, parent_id: user!.id,
           severity: sevMap[a.severity_tier] ?? "moderate",
           title: a.refer_to_professional ? `⚠️ Recomendada ayuda profesional para ${child.name}` : `Score ${a.emotional_score} en ${child.name}`,
           message: a.refer_to_professional ? `${a.referral_reason}\n\n${a.explanation}` : a.explanation,
         }]);
+        if (errAl) toast.error(`El análisis se guardó, pero no se pudo crear la alerta: ${errAl.message}`);
       }
 
       if (a.risk_level === "low") {
@@ -236,9 +255,11 @@ const ChildDetail = () => {
         if (newPoints >= 50 && !badges.includes("🥉 Hábito saludable")) badges.push("🥉 Hábito saludable");
         if (newPoints >= 150 && !badges.includes("🥈 Constancia")) badges.push("🥈 Constancia");
         if (newPoints >= 300 && !badges.includes("🥇 Maestro digital")) badges.push("🥇 Maestro digital");
-        await supabase.from("gamification").upsert([{
+        // No critico: son puntos de juego, no datos clinicos.
+        const { error: errJuego } = await supabase.from("gamification").upsert([{
           child_id: id!, parent_id: user!.id, points: newPoints, badges
         }], { onConflict: "child_id" });
+        if (errJuego) console.error("No se pudo guardar la gamificación:", errJuego.message);
       }
 
       toast.success("Análisis IA multidimensional completado ✨");
@@ -407,7 +428,35 @@ const ChildDetail = () => {
     doc.save(`informe-${child?.name ?? "nsk"}-${new Date().toISOString().slice(0,10)}.pdf`);
   };
 
-  if (!child) return <AppLayout><div className="text-muted-foreground">Cargando…</div></AppLayout>;
+  if (!child) {
+    // Nunca dejar al padre mirando un "Cargando…" que no termina: o está
+    // cargando de verdad, o hay un motivo y se dice cuál.
+    if (falloCarga === "no-encontrado") {
+      return (
+        <AppLayout>
+          <Card className="p-6 max-w-md">
+            <h2 className="font-semibold mb-1">No encontramos este perfil</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Puede que se haya eliminado, o que el enlace sea de otra cuenta.
+            </p>
+            <Button asChild variant="outline"><Link to="/children">Ver mis hijos</Link></Button>
+          </Card>
+        </AppLayout>
+      );
+    }
+    if (falloCarga) {
+      return (
+        <AppLayout>
+          <Card className="p-6 max-w-md border-destructive/40">
+            <h2 className="font-semibold mb-1 text-destructive">No se pudo cargar</h2>
+            <p className="text-sm text-muted-foreground mb-4">{falloCarga}</p>
+            <Button variant="outline" onClick={() => loadAll()}>Reintentar</Button>
+          </Card>
+        </AppLayout>
+      );
+    }
+    return <AppLayout><div className="text-muted-foreground">Cargando…</div></AppLayout>;
+  }
 
   return (
     <AppLayout>

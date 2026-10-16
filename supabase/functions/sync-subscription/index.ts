@@ -60,7 +60,9 @@ Deno.serve(async (req) => {
     const interval = session.metadata?.interval ?? "monthly";
     const sub = session.subscription as Stripe.Subscription | null;
 
-    await admin.from("subscriptions").upsert({
+    // Si esto falla en silencio, el padre ha pagado y se queda en el plan
+    // gratuito, que ademas desactiva el analisis con IA. Tiene que saberlo.
+    const { error: errSus } = await admin.from("subscriptions").upsert({
       user_id: user.id,
       plan,
       status: "active",
@@ -71,6 +73,13 @@ Deno.serve(async (req) => {
       current_period_end: sub ? new Date(sub.current_period_end * 1000).toISOString() : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
+    if (errSus) {
+      console.error("No se pudo sincronizar la suscripcion de", user.id, errSus.message);
+      return new Response(JSON.stringify({
+        error: "El pago se ha realizado, pero no hemos podido activar tu plan. "
+          + "Escríbenos y lo resolvemos sin que tengas que pagar de nuevo.",
+      }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     console.log(`sync-subscription: user ${user.id} → plan ${plan} activo`);
     return json({ ok: true, plan, status: "active" });

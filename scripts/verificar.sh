@@ -90,6 +90,19 @@ sys.exit(1 if rotos else 0)
 PY
 [ $? -ne 0 ] && FALLOS=$((FALLOS+1))
 
+paso "Errores que se descartan (la causa de casi todos los fallos)"
+# Un error ignorado convierte un fallo en un exito aparente. Asi se perdio el
+# analisis diario entero, el registro del dispositivo y el codigo de
+# instalacion: ninguno dio error nunca, simplemente no hacian nada.
+SILENCIOSOS=$(grep -rnE '^\s*await (admin|userClient|supabase)\.(from|rpc)\(' \
+  supabase/functions/*/index.ts 2>/dev/null)
+SILENCIOSOS="$SILENCIOSOS$(grep -rnE 'await supabase\.from\("[a-z_]+"\)\.(insert|update|delete|upsert)' \
+  --include=*.tsx src/pages src/components 2>/dev/null | grep -v 'error')"
+if [ -n "$(echo "$SILENCIOSOS" | tr -d '[:space:]')" ]; then
+  echo "$SILENCIOSOS" | sed 's/^/   /' | head -12
+  mal "hay escrituras sin comprobar el error"
+else bien "todas las escrituras comprueban el error"; fi
+
 paso "Restos del monitor web retirado"
 RESTOS=$(grep -rn 'pages/Monitor\|ConnectWizard\|ConnectDevice\|"/monitor"\|TestApp' \
          --include=*.tsx --include=*.ts src 2>/dev/null | grep -v types.ts)
