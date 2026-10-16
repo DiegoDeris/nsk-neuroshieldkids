@@ -46,7 +46,7 @@ const _v = "20260603-v4"; // cache bust
 const ChildDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const { limits, plan } = useSubscription();
+  const { limits, plan, loading: cargandoPlan } = useSubscription();
   const [child, setChild] = useState<any>(null);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [scores, setScores] = useState<any[]>([]);
@@ -61,6 +61,14 @@ const ChildDetail = () => {
 
   const loadingRef = useRef(false);
   const lastAutoAnalyzeRef = useRef<string | null>(null);
+  // El motor clínico necesita 28 días de historial para calcular las líneas
+  // base del propio niño. Eso NO es lo mismo que los días que el plan deja
+  // ver en pantalla: aunque un plan muestre menos, el análisis se hace sobre
+  // la ventana clínica completa. Antes se usaba el límite del plan para
+  // ambas cosas y, como el plan tarda en resolverse, el análisis salía con 2
+  // días de historial y una confianza del 50% en lugar del 95%.
+  const DIAS_MOTOR = 28;
+
   const loadAll = useCallback(async () => {
     if (!id) return;
     if (loadingRef.current) return;
@@ -68,7 +76,8 @@ const ChildDetail = () => {
     try {
     const [{ data: c }, { data: m }, { data: s }, { data: r }, { data: g }] = await Promise.all([
       supabase.from("children").select("*").eq("id", id).maybeSingle(),
-      supabase.from("usage_metrics").select("*").eq("child_id", id).order("metric_date", { ascending: false }).limit(limits.historyDays === Infinity ? 365 : limits.historyDays),
+      supabase.from("usage_metrics").select("*").eq("child_id", id).order("metric_date", { ascending: false })
+        .limit(Math.max(DIAS_MOTOR + 1, limits.historyDays === Infinity ? 365 : limits.historyDays)),
       supabase.from("emotional_scores").select("*").eq("child_id", id).order("created_at", { ascending: false }).limit(14),
       supabase.from("recommendations").select("*").eq("child_id", id).order("created_at", { ascending: false }).limit(10),
       supabase.from("gamification").select("*").eq("child_id", id).maybeSingle(),
@@ -83,6 +92,12 @@ const ChildDetail = () => {
 
   // Auto-análisis en vivo: cuando llegan métricas nuevas que no tienen análisis de hoy
   useEffect(() => {
+    // Nunca analizar antes de saber el plan. Mientras se resuelve, limits
+    // vale lo del plan gratuito, y arrancar ahí producía un veredicto
+    // calculado sobre 2 días de historial que luego ya no se repetía por el
+    // periodo de espera: el mismo niño salía con 50% de confianza en pantalla
+    // y 95% en el análisis de la noche.
+    if (cargandoPlan) return;
     if (analyzing || !metrics[0]) return;
     // Clave: id + total_minutes para detectar tanto filas nuevas como actualizaciones por UPSERT
     const metricKey = `${metrics[0].id}_${metrics[0].total_minutes ?? 0}`;
@@ -96,7 +111,9 @@ const ChildDetail = () => {
     const t = setTimeout(() => analyze(), 1500);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metrics[0]?.id, metrics[0]?.total_minutes]);
+    // cargandoPlan entra en las dependencias: al resolverse el plan hay que
+    // reevaluar si toca analizar, no quedarse con la decisión tomada antes.
+  }, [metrics[0]?.id, metrics[0]?.total_minutes, cargandoPlan]);
 
   // Realtime: refresca al instante cuando llegan datos del dispositivo / IA
   useEffect(() => {
