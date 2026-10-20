@@ -37,6 +37,24 @@ for t in clinicalEngine forecastEngine; do
   fi
 done
 
+paso "Contraseñas filtradas"
+# Supabase solo ofrece esta protección en planes de pago, así que la hace la
+# propia app contra HaveIBeenPwned. Si se rompe, cualquiera podría registrarse
+# con una contraseña ya publicada en filtraciones.
+if npx tsx src/lib/contrasenaFiltrada.test.ts >/tmp/nsk-hibp.log 2>&1; then
+  bien "$(grep -oE '[0-9]+ correctas' /tmp/nsk-hibp.log | tail -1)"
+else
+  grep '✗' /tmp/nsk-hibp.log | sed 's/^/   /'
+  mal "la comprobación de contraseñas filtradas no funciona"
+fi
+# La comprobación necesita permiso explícito en la cabecera de seguridad:
+# si falta, el navegador bloquea la llamada y nadie se entera.
+if grep -q 'api.pwnedpasswords.com' vercel.json; then
+  bien "la cabecera de seguridad permite la comprobación"
+else
+  mal "falta api.pwnedpasswords.com en connect-src de vercel.json"
+fi
+
 paso "Configuración y textos"
 python3 - <<'PY' || exit 1
 import json, os, sys

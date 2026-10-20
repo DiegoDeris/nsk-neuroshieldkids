@@ -167,6 +167,8 @@
     "passwordMin": "La contraseña debe tener 8 caracteres o más",
     "passwordSignupHint": "Usa una contraseña segura: mezcla letras y números. Evita 12345678 o claves muy obvias.",
     "passwordWeak": "Esa contraseña es demasiado fácil de adivinar. Prueba con letras y números, por ejemplo: LunaCasa27.",
+    "passwordLeaked": "Esa contraseña aparece en filtraciones públicas de datos y ya no es segura. Elige otra distinta, que no uses en ninguna otra web.",
+    "passwordChecking": "Comprobando la contraseña…",
     "emailAlreadyRegistered": "Ese email ya está registrado. Entra con tu cuenta o usa otro correo.",
     "invalidCredentials": "Email o contraseña incorrectos.",
     "emailNotConfirmed": "Revisa tu email y confirma la cuenta antes de entrar.",

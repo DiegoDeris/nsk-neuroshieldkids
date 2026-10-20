@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { toast } from "sonner";
 import { z } from "zod";
+import { comprobarContrasenaFiltrada } from "@/lib/contrasenaFiltrada";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -67,6 +68,10 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
+        // Una contraseña ya filtrada es la vía de entrada más fácil a una
+        // cuenta que contiene datos de un menor. Se comprueba antes de crearla.
+        const filtrada = await comprobarContrasenaFiltrada(clean.password);
+        if (filtrada.filtrada) { toast.error(t("auth.passwordLeaked")); setLoading(false); return; }
         const { data, error } = await supabase.auth.signUp({
           email: clean.email, password: clean.password,
           options: { emailRedirectTo: `${window.location.origin}/dashboard`, data: { full_name: clean.full_name || clean.email.split("@")[0] } },
@@ -120,6 +125,8 @@ const Auth = () => {
             e.preventDefault();
             if (newPassword.length < 8) { toast.error(t("auth.passwordMin")); return; }
             setLoading(true);
+            const filtrada = await comprobarContrasenaFiltrada(newPassword);
+            if (filtrada.filtrada) { toast.error(t("auth.passwordLeaked")); setLoading(false); return; }
             const { error } = await supabase.auth.updateUser({ password: newPassword });
             setLoading(false);
             if (error) { toast.error(error.message); return; }

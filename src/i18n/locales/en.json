@@ -167,6 +167,8 @@
     "passwordMin": "Password must be 8 characters or more",
     "passwordSignupHint": "Use a strong password: mix letters and numbers. Avoid 12345678 or very obvious passwords.",
     "passwordWeak": "That password is too easy to guess. Try letters and numbers, for example: MoonHome27.",
+    "passwordLeaked": "That password appears in public data breaches and is no longer safe. Choose a different one that you don't use on any other site.",
+    "passwordChecking": "Checking the password…",
     "emailAlreadyRegistered": "That email is already registered. Sign in or use another email.",
     "invalidCredentials": "Incorrect email or password.",
     "emailNotConfirmed": "Check your email and confirm your account before signing in.",
