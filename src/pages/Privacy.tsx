@@ -137,7 +137,31 @@ export default function Privacy() {
           supresión o al cerrar la cuenta.
         </p>
 
-        <h2>10. Tus derechos (RGPD Arts. 15–22)</h2>
+        <h2>10. Cómo eliminar tus datos</h2>
+        <p><strong>Para borrar tu cuenta de NeuroShield Kids y todos sus datos:</strong></p>
+        <ol>
+          <li>Entra en neuroshieldkids.com con tu cuenta de padre o tutor.</li>
+          <li>Abre <Link to="/account">Mi Cuenta</Link>.</li>
+          <li>Pulsa <strong>Eliminar cuenta</strong> y confirma.</li>
+        </ol>
+        <p>
+          Si prefieres no hacerlo tú, escribe a{" "}
+          <a href="mailto:privacidad@nsk.app">privacidad@nsk.app</a> desde la dirección de tu cuenta
+          y lo tramitamos nosotros.
+        </p>
+        <p>
+          <strong>Qué se borra:</strong> la cuenta, los perfiles de los hijos, los dispositivos
+          vinculados, todos los eventos de uso y señales de conducta, los resultados de análisis,
+          las alertas y las recomendaciones. El borrado es inmediato e irreversible.
+        </p>
+        <p>
+          <strong>Qué se conserva:</strong> únicamente los registros de facturación que la ley
+          obliga a guardar, durante el plazo legal aplicable (en España, 6 años). No contienen datos
+          de uso ni datos del menor.
+        </p>
+        <p>Antes de borrar puedes descargar todos tus datos en formato JSON desde Mi Cuenta.</p>
+
+        <h2>11. Tus derechos (RGPD Arts. 15–22)</h2>
         <p>Puedes ejercer en cualquier momento los derechos de:</p>
         <ul>
           <li><strong>Acceso</strong> a tus datos personales.</li>
@@ -158,19 +182,19 @@ export default function Privacy() {
           <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer">www.aepd.es</a>.
         </p>
 
-        <h2>11. Cookies</h2>
+        <h2>12. Cookies</h2>
         <p>
           Esta aplicación no utiliza cookies de seguimiento ni publicidad. Únicamente se almacena en
           el navegador la sesión de autenticación necesaria para el funcionamiento del servicio.
         </p>
 
-        <h2>12. Cambios en esta política</h2>
+        <h2>13. Cambios en esta política</h2>
         <p>
           Cualquier cambio relevante se notificará por correo electrónico con al menos 30 días de
           antelación. La versión actualizada siempre estará disponible en esta página.
         </p>
 
-        <h2>13. Contacto</h2>
+        <h2>14. Contacto</h2>
         <p>
           Para cualquier consulta sobre privacidad:{" "}
           <a href="mailto:privacidad@nsk.app">privacidad@nsk.app</a>

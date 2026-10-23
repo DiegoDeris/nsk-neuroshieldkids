@@ -93,6 +93,15 @@ sys.exit(1 if fallos else 0)
 PY
 [ $? -ne 0 ] && FALLOS=$((FALLOS+1))
 
+paso "Páginas legales legibles sin JavaScript"
+# El revisor automático de Google Play no ejecuta JavaScript: en /privacy
+# veía una página en blanco. Sin una copia estática, el envío se rechaza.
+if [ -f public/privacidad.html ] && grep -q 'eliminar tus datos' public/privacidad.html; then
+  bien "privacidad.html existe y explica cómo eliminar los datos"
+else
+  mal "falta public/privacidad.html o no explica el borrado de datos"
+fi
+
 paso "Enlaces internos"
 python3 - <<'PY' || exit 1
 import re, subprocess, sys
