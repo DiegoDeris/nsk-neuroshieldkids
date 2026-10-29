@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.neuroshield.nsk",
+      "sha256_cert_fingerprints": [
+        "23:81:AF:FA:DE:A3:84:13:46:CD:96:54:E6:2C:A8:82:86:E9:E1:AC:8C:23:D2:35:66:B4:F6:1C:44:DE:70:DD",
+        "97:73:8A:A7:AF:E9:82:C6:01:D7:B2:6D:3C:E3:2C:36:A5:31:A6:74:C2:A2:5F:11:4C:F1:33:AE:30:1D:88:81"
+      ]
+    }
+  }
+]

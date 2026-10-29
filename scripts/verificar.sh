@@ -102,6 +102,43 @@ else
   mal "falta public/privacidad.html o no explica el borrado de datos"
 fi
 
+paso "Enlaces de emparejamiento de Android"
+# Sin assetlinks.json, Android no verifica los dominios declarados en el
+# manifiesto y el enlace /install/TOKEN no abre la app. No da ningun error:
+# simplemente abre el navegador y el padre cree que la app no funciona.
+python3 - <<'PY' || exit 1
+import json, re, sys, os
+fallos = 0
+ruta = 'public/.well-known/assetlinks.json'
+if not os.path.exists(ruta):
+    print('   ✗ falta', ruta); sys.exit(1)
+try:
+    datos = json.load(open(ruta))
+except Exception as e:
+    print('   ✗ assetlinks.json no es JSON válido:', e); sys.exit(1)
+huellas = set()
+for bloque in datos:
+    t = bloque.get('target', {})
+    if t.get('package_name') != 'com.neuroshield.nsk':
+        print('   ✗ paquete inesperado:', t.get('package_name')); fallos += 1
+    for h in t.get('sha256_cert_fingerprints', []):
+        if not re.fullmatch(r'([0-9A-F]{2}:){31}[0-9A-F]{2}', h):
+            print('   ✗ huella con formato incorrecto:', h[:20], '…'); fallos += 1
+        huellas.add(h)
+if not huellas:
+    print('   ✗ assetlinks.json sin ninguna huella'); fallos += 1
+else:
+    print(f'   ✓ assetlinks.json con {len(huellas)} huella(s) para com.neuroshield.nsk')
+
+# Todo dominio declarado en el manifiesto tiene que servir este archivo.
+man = '../nsk-android/app/src/main/AndroidManifest.xml'
+if os.path.exists(man):
+    hosts = sorted(set(re.findall(r'android:host="([^"]+)"', open(man).read())) - {'setup'})
+    print('   · dominios declarados en Android:', ', '.join(hosts))
+sys.exit(1 if fallos else 0)
+PY
+[ $? -ne 0 ] && FALLOS=$((FALLOS+1))
+
 paso "Enlaces internos"
 python3 - <<'PY' || exit 1
 import re, subprocess, sys
