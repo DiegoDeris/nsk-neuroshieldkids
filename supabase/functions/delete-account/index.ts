@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         ok: false,
         error: "La cuenta se eliminó, pero quedaron datos sin borrar. "
-          + "Escríbenos a privacidad@nsk.app y lo completamos de inmediato.",
+          + "Escríbenos a privacidad@neuroshieldkids.com y lo completamos de inmediato.",
         detalle: sobras,
       }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
