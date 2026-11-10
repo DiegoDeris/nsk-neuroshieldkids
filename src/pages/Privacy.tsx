@@ -16,7 +16,7 @@ export default function Privacy() {
         <p>
           NSK (en adelante, "nosotros") es el responsable del tratamiento de los datos personales
           recogidos a través de esta aplicación. Puedes contactarnos en{" "}
-          <a href="mailto:privacidad@nsk.app">privacidad@nsk.app</a>.
+          <a href="mailto:privacidad@neuroshieldkids.com">privacidad@neuroshieldkids.com</a>.
         </p>
 
         <h2>2. Datos que recogemos</h2>
@@ -146,7 +146,7 @@ export default function Privacy() {
         </ol>
         <p>
           Si prefieres no hacerlo tú, escribe a{" "}
-          <a href="mailto:privacidad@nsk.app">privacidad@nsk.app</a> desde la dirección de tu cuenta
+          <a href="mailto:privacidad@neuroshieldkids.com">privacidad@neuroshieldkids.com</a> desde la dirección de tu cuenta
           y lo tramitamos nosotros.
         </p>
         <p>
@@ -172,7 +172,7 @@ export default function Privacy() {
         </ul>
         <p>
           Para ejercer cualquiera de estos derechos, escríbenos a{" "}
-          <a href="mailto:privacidad@nsk.app">privacidad@nsk.app</a> o utiliza las opciones de
+          <a href="mailto:privacidad@neuroshieldkids.com">privacidad@neuroshieldkids.com</a> o utiliza las opciones de
           exportación y eliminación disponibles en{" "}
           <Link to="/account">Mi Cuenta</Link>.
         </p>
@@ -197,7 +197,7 @@ export default function Privacy() {
         <h2>14. Contacto</h2>
         <p>
           Para cualquier consulta sobre privacidad:{" "}
-          <a href="mailto:privacidad@nsk.app">privacidad@nsk.app</a>
+          <a href="mailto:privacidad@neuroshieldkids.com">privacidad@neuroshieldkids.com</a>
         </p>
       </main>
       <footer className="container py-8 text-center text-sm text-slate-400">

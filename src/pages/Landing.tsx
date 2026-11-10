@@ -185,7 +185,7 @@ const Landing = () => {
         <p>
           <Link to="/privacy" className="hover:underline">Política de privacidad</Link>
           {" · "}
-          <a href="mailto:privacidad@nsk.app" className="hover:underline">privacidad@nsk.app</a>
+          <a href="mailto:privacidad@neuroshieldkids.com" className="hover:underline">privacidad@neuroshieldkids.com</a>
         </p>
       </footer>
     </div>
