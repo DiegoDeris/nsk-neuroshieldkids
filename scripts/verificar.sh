@@ -102,6 +102,21 @@ else
   mal "falta public/privacidad.html o no explica el borrado de datos"
 fi
 
+paso "Correo de privacidad alcanzable"
+# La política anunciaba privacidad@nsk.app, un dominio que no es nuestro: el
+# buzón no existía y nadie podía ejercer sus derechos de RGPD. El correo tiene
+# que estar en un dominio nuestro y con buzón de verdad (Cloudflare Email
+# Routing reenvía privacidad@neuroshieldkids.com al Gmail del responsable).
+CORREOS=$(grep -rhoE '[a-z]+@[a-z0-9.-]+\.[a-z]{2,}' \
+  public/privacidad.html src/pages/Privacy.tsx 2>/dev/null | sort -u)
+AJENOS=$(echo "$CORREOS" | grep -v '@neuroshieldkids\.com$' | grep -v '^$')
+if [ -n "$AJENOS" ]; then
+  echo "$AJENOS" | sed 's/^/   /'
+  mal "la política de privacidad da correos de dominios que no controlamos"
+else
+  bien "todos los correos de la política son de neuroshieldkids.com"
+fi
+
 paso "Enlaces de emparejamiento de Android"
 # Sin assetlinks.json, Android no verifica los dominios declarados en el
 # manifiesto y el enlace /install/TOKEN no abre la app. No da ningun error:
